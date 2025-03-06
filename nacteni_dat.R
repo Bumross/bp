@@ -10,8 +10,10 @@ library(forecast)
 
 ################### Načtení dat
 # vitr
-path <- "C:\\Users\\bruli\\OneDrive\\UJEP_BP\\data\\meteo_2024_11_01.csv"
+path <- "~\\bo_data_analysis\\data\\meteo_2024_11_01.csv"
 wind <- read.csv(path)
+
+
 
 wind$date <- as.POSIXct(wind$date, format="%Y-%m-%d %H:%M:%OS")
 
@@ -43,9 +45,10 @@ final_summary <- hourly_summary %>%
 
 
 # auta
-path <- "C:\\Users\\bruli\\OneDrive\\UJEP_BP\\data\\ddb_data"
+path <- "~\\bo_data_analysis\\data\\ddb_data"
 
 csv_files <- list.files(path = path, pattern = "\\.csv$", full.names = TRUE)
+
 
 # načtení dat ddb do jednoho data frame:
 combined_data <- csv_files %>%
@@ -73,7 +76,7 @@ sum_60 <- sum_60 %>%
 
 
 # ovzdusi
-path <- "C:\\Users\\bruli\\OneDrive\\UJEP_BP\\data\\pm_2024_11_01.csv"
+path <- "~\\bo_data_analysis\\data\\pm_2024_11_01.csv"
 polution <- read.csv(path)
 
 polution$date <- as.POSIXct(polution$date, format="%Y-%m-%d %H:%M:%OS")
@@ -107,6 +110,9 @@ hourly_summary_combined <- hourly_summary %>%
   mutate(total_pm = total_pm10 + total_pm25 + total_pm40 + total_pm100) %>%
   select(hour, total_pm, avg_no2)
 
+###########################################################################
+###########################################################################
+###########################################################################
 
 ### Sjednoceni vsech dat do jednoho DF
 merged_data <- final_summary %>%
@@ -114,7 +120,36 @@ merged_data <- final_summary %>%
   inner_join(sum_60, by = "hour")
 
 
+log_data <- merged_data %>%
+  mutate(across(-hour, ~ log(. + 1), .names = "{.col}"))
+
+log_scaled_data <- log_data %>%
+  mutate(across(-hour, scale, .names = "{.col}"))
+
+scaled_data <- merged_data %>%
+  mutate(across(-hour, scale, .names = "{.col}"))
 
 
+# merged_data = všechna data sjednocená, neupravená
+# log_date = logaritmovaná data
+# log_scaled_data = logaritmovaná a škálovaná data
+# scaled_data = škálovaná data
 
 
+###########################################################################
+###########################################################################
+###########################################################################
+# smazani nepotrebnych promennych
+
+rm(final_summary)
+rm(combined_data)
+rm(hourly_summary)
+rm(hourly_summary_combined)
+rm(polution)
+rm(polution_summary)
+rm(senzor_density_60)
+rm(sum_60)
+rm(wind)
+
+rm(csv_files)
+rm(path)

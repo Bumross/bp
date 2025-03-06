@@ -5,130 +5,41 @@ library(tseries)
 library(zoo)
 library(lmtest)
 library(forecast)
-#################################################
-##########################################################################
-##########################################################################
 
 
-par(mfrow=c(2,1))
-acf(merged_data$total_pm, lag.max=24, main="ACF PM koncentrace (24 hodin)")
-pacf(merged_data$total_pm, lag.max=24, main="PACF PM koncentrace (24 hodin)")
-par(mfrow=c(1,1))
+### nutno mit nacteny data frame ze souboru "nacteni_dat.R"
 
-par(mfrow=c(2,1))
-acf(merged_data$total_pm, lag.max=168, main="ACF PM koncentrace (168 hodin)")
-pacf(merged_data$total_pm, lag.max=168, main="PACF PM koncentrace (168 hodin)")
-par(mfrow=c(1,1))
+# merged_data = všechna data sjednocená, neupravená
+# log_date = logaritmovaná data
+# log_scaled_data = logaritmovaná a škálovaná data
+# scaled_data = škálovaná data
 
+#############################################################################
+#############################################################################
+#############################################################################
 
-# diference = 1, musím s tím počítat dále
-# pokračuji zatím pouze s denní sezónností
-# acf naznačuje sezónní nestacionaritu - volím d=1
-
-ts_pm <- ts(merged_data$total_pm, frequency = 24, start = c(year(min(merged_data$hour)), yday(min(merged_data$hour))))
-plot(ts_pm, main="Časová řada PM koncentrace", ylab="PM")
-
-
-sarima_model <- auto.arima(ts_pm, d=1, D=1, 
-                           seasonal=TRUE, stepwise=FALSE, approximation=FALSE, 
-                           trace=TRUE, lambda=NULL)
-
-summary(sarima_model)
-
-# sarima 1 1 1, 2 1 0
-par(mfrow=c(2,1))
-acf(residuals(sarima_model), main="ACF reziduí SARIMA modelu")
-pacf(residuals(sarima_model), main="PACF reziduí SARIMA modelu")
-par(mfrow=c(1,1))
-
-Box.test(residuals(sarima_model), type="Ljung-Box")
-qqnorm(residuals(sarima_model))
-qqline(residuals(sarima_model), col="red")
-
-
-#######################
-# logaritmuju - rezidua nejsou normálního rozložení
-
-merged_data$log_total_pm <- log(merged_data$total_pm)
-ts_pm_log <- ts(merged_data$log_total_pm, frequency = 24, start = c(year(min(merged_data$hour)), yday(min(merged_data$hour))))
-
-sarima_model_log <- auto.arima(ts_pm_log, d=1, D=1, 
-                               seasonal=TRUE, stepwise=FALSE, approximation=FALSE, 
-                               trace=TRUE, lambda=NULL)
-
-
-sarima_model_log <- Arima(ts_pm_log, 
-                       order = c(1,1,1),         
-                       seasonal = list(order = c(2,1,0), period = 24),     
-                       method = "ML") 
-
-
-summary(sarima_model_log)
-# sarima 1 1 1, 2 1 0
-
-par(mfrow=c(2,1))
-acf(residuals(sarima_model_log), main="ACF reziduí SARIMA modelu (log)")
-pacf(residuals(sarima_model_log), main="PACF reziduí SARIMA modelu (log)")
-par(mfrow=c(1,1))
-
-Box.test(residuals(sarima_model_log), type="Ljung-Box")
-qqnorm(residuals(sarima_model_log))
-qqline(residuals(sarima_model_log), col="red")
-
-checkresiduals(sarima_model_log)
-
-# lepsi presnost, logaritmizace vyrazne zlepsila model
-
-
-par(mfrow=c(2,3))  
-hist(merged_data$vehicle_count, main="Počet aut", xlab="Hodnoty", breaks=30)
-hist(merged_data$avg_no2, main="NO2", xlab="Hodnoty", breaks=30)
-hist(merged_data$total_temp, main="Teplota", xlab="Hodnoty", breaks=30)
-hist(merged_data$total_hum, main="Vlhkost", xlab="Hodnoty", breaks=30)
-hist(merged_data$total_windSpeed, main="Rychlost větru", xlab="Hodnoty", breaks=30)
-hist(merged_data$total_pressure, main="Tlak", xlab="Hodnoty", breaks=30)
-hist(merged_data$total_windImpact, main="Vliv větru", xlab="Hodnoty", breaks=30)
-par(mfrow=c(1,1))
-
-
-## zlogaritmovani dalsich???
-
-## zlogaritmizuju jen ty, kde je rozlozeni fakt nenormalni 
-
-## ja to urcite poseru, sleduj
-
-merged_data$log_vehicle_count <- log(merged_data$vehicle_count + 1)
-merged_data$log_avg_no2 <- log(merged_data$avg_no2 + 1)
-merged_data$log_total_windSpeed <- log(merged_data$total_windSpeed + 1)
-merged_data$log_total_windImpact <- log(merged_data$total_windImpact + 1)
-merged_data$log_total_hum <- log(merged_data$total_hum + 1)
-merged_data$log_total_temp <- log(merged_data$total_temp + 1)
-merged_data$log_total_pressure <- log(merged_data$total_pressure + 1)
-
-
-#############################x
 ## CCF
 ##
 
 par(mfrow=c(2,2))  
 
-ccf(merged_data$log_total_pm, merged_data$log_vehicle_count, lag.max=12, main="CCF: log(PM) vs. log(Auta)")
-ccf(merged_data$log_total_pm, merged_data$log_avg_no2, lag.max=12, main="CCF: log(PM) vs. log(NO2)")
-ccf(merged_data$log_total_pm, merged_data$log_total_windSpeed, lag.max=12, main="CCF: log(PM) vs. log(Rychlost větru)")
-ccf(merged_data$log_total_pm, merged_data$log_total_hum, lag.max=12, main="CCF: log(PM) vs. log(Vlhkost)")
+ccf(log_data$total_pm, merged_data$vehicle_count, lag.max=12, main="CCF: log(PM) vs. Auta")
+ccf(log_data$total_pm, merged_data$avg_no2, lag.max=12, main="CCF: log(PM) vs. NO2")
+ccf(log_data$total_pm, merged_data$total_windSpeed, lag.max=12, main="CCF: log(PM) vs. Rychlost větru")
+ccf(log_data$total_pm, merged_data$total_hum, lag.max=12, main="CCF: log(PM) vs. Vlhkost")
 
 
-ccf(merged_data$log_total_pm, merged_data$total_temp, lag.max=12, main="CCF: log(PM) vs. Teplota")
-ccf(merged_data$log_total_pm, merged_data$total_hum, lag.max=12, main="CCF: log(PM) vs. Vlhkost")
-ccf(merged_data$log_total_pm, merged_data$total_pressure, lag.max=12, main="CCF: log(PM) vs. Tlak")
-ccf(merged_data$log_total_pm, merged_data$total_windSpeed, lag.max=12, main="CCF: log(PM) vs. Rychlost větru")
+ccf(log_data$total_pm, merged_data$total_temp, lag.max=12, main="CCF: log(PM) vs. Teplota")
+ccf(log_data$total_pm, merged_data$total_hum, lag.max=12, main="CCF: log(PM) vs. Vlhkost")
+ccf(log_data$total_pm, merged_data$total_pressure, lag.max=12, main="CCF: log(PM) vs. Tlak")
+ccf(log_data$total_pm, merged_data$total_windImpact, lag.max=12, main="CCF: log(PM) vs. Vliv větru")
 
 par(mfrow=c(1,1))  
 
+# teplota 1
 
-
-######################
-## nastavení logů
+################################################################################
+## nastavení lagů
 merged_data$log_vehicle_count_lag5 <- dplyr::lag(merged_data$log_vehicle_count, 1)
 merged_data$log_avg_no2_lag6 <- dplyr::lag(merged_data$log_avg_no2, 0)
 merged_data$log_total_windSpeed_lag1 <- dplyr::lag(merged_data$log_total_windSpeed, 1)
@@ -418,82 +329,3 @@ qqline(residuals(arimax_weather), col="red")
 
 coeftest(arimax_weather)
 
-
-
-
-
-##########################################################################
-##########################################################################
-##########################################################################
-# model pocasi + auta
-
-
-#######################################################################################
-#########################################################################################
-## sezonnost 168
-
-
-ts_pm_log_scaled <- ts(merged_data_scaled$log_total_pm, frequency = 168)
-
-x_reg_scaled <- as.matrix(merged_data_scaled[, c("vehicle_count", "avg_no2", 
-                                                 "total_windSpeed", "total_pressure", 
-                                                 "total_temp", "total_hum")])
-
-
-arimax_manual <- Arima(ts_pm_log_scaled, 
-                       order = c(1,1,1),         
-                       seasonal = list(order = c(2,1,0), period = 168),  
-                       xreg = x_reg_scaled,     
-                       method = "ML") 
-
-summary(arimax_scaled_168)
-
-par(mfrow=c(2,1))
-acf(residuals(arimax_scaled_168), main="ACF reziduí ARIMAX modelu (škálovaný, týdenní sezónnost)")
-pacf(residuals(arimax_scaled_168), main="PACF reziduí ARIMAX modelu (škálovaný, týdenní sezónnost)")
-par(mfrow=c(1,1))
-
-Box.test(residuals(arimax_scaled_168), type="Ljung-Box")
-
-qqnorm(residuals(arimax_scaled_168))
-qqline(residuals(arimax_scaled_168), col="red")
-
-coeftest(arimax_scaled_168)
-
-residuals_arimax_scaled_168 <- residuals(arimax_scaled_168)
-lm_model_scaled_168 <- lm(residuals_arimax_scaled_168 ~ x_reg_scaled)
-
-bgtest(lm_model_scaled_168)
-bptest(lm_model_scaled_168) # nekoukat na cisla, okometrie >>>>
-
-
-#######################################################################################
-#########################################################################################
-## model pouze na autech
-x_reg_car <- as.matrix(merged_data[, c("vehicle_count")])
-
-ts_pm_log <- ts(merged_data$log_total_pm, frequency = 24)
-
-arimax_car <- auto.arima(ts_pm_log_scaled, 
-                             xreg = x_reg_car, 
-                             d = 1,      
-                             D = 1,      
-                             seasonal = TRUE,  
-                             stepwise = FALSE, 
-                             approximation = FALSE, 
-                             trace = TRUE) 
-summary(arimax_car)
-
-par(mfrow=c(2,1))
-acf(residuals(arimax_car), main="ACF reziduí ARIMAX modelu (Počasí)")
-pacf(residuals(arimax_car), main="PACF reziduí ARIMAX modelu (Počasí)")
-par(mfrow=c(1,1))
-
-Box.test(residuals(arimax_car), type="Ljung-Box")
-
-qqnorm(residuals(arimax_car))
-qqline(residuals(arimax_car), col="red")
-
-coeftest(arimax_car)
-
-checkresiduals(arimax_car)
