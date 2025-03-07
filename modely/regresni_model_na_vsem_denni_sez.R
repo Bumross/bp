@@ -36,24 +36,52 @@ ccf(log_data$total_pm, merged_data$total_windImpact, lag.max=12, main="CCF: log(
 
 par(mfrow=c(1,1))  
 
-# teplota 1
+# teplota 1, vlhkost 0, tlak 1, vliv 0-1, no2 0-1, rychlost větru 0-1, auta 0-1
 
 ################################################################################
-## nastavení lagů
-merged_data$log_vehicle_count_lag5 <- dplyr::lag(merged_data$log_vehicle_count, 1)
-merged_data$log_avg_no2_lag6 <- dplyr::lag(merged_data$log_avg_no2, 0)
-merged_data$log_total_windSpeed_lag1 <- dplyr::lag(merged_data$log_total_windSpeed, 1)
-merged_data$total_pressure_lag2 <- dplyr::lag(merged_data$total_pressure, 1)
-merged_data$total_temp_lag2 <- dplyr::lag(merged_data$total_temp, 1)
-merged_data$log_total_hum_lag5 <- dplyr::lag(merged_data$log_total_hum, 0)
+# použití lagů 
+
+######################x
+## pro normální data
+
+merged_data$vehicle_count_1 <- dplyr::lag(merged_data$vehicle_count, 1)
+merged_data$avg_no2_0 <- dplyr::lag(merged_data$avg_no2, 0)
+merged_data$total_windSpeed_1 <- dplyr::lag(merged_data$total_windSpeed, 1)
+merged_data$total_pressure_1 <- dplyr::lag(merged_data$total_pressure, 1)
+merged_data$total_temp_1 <- dplyr::lag(merged_data$total_temp, 1)
+merged_data$total_hum_0 <- dplyr::lag(merged_data$total_hum, 0)
+merged_data$total_windImpact <- dplyr::lag(merged_data$total_windImpact, 0)
 
 
-merged_data_clean <- merged_data %>% na.omit()
+
+merged_data_lags_1 <- merged_data %>% na.omit()
 
 ts_pm_log_clean <- ts(merged_data_clean$log_total_pm, frequency = , 
                       start = c(year(min(merged_data_clean$hour)), 
                                 yday(min(merged_data_clean$hour))))
 
+
+######################x
+## pro škálovaná
+scaled_data$vehicle_count_1 <-dplyr::lag(scaled_data$vehicle_count, 1)
+scaled_data$avg_no2_1 <-dplyr::lag(scaled_data$avg_no2, 1)
+scaled_data$total_windSpeed_0 <-dplyr::lag(scaled_data$total_windSpeed, 0)
+scaled_data$total_pressure_1 <-dplyr::lag(scaled_data$total_pressure, 1)
+scaled_data$total_temp_1 <-dplyr::lag(scaled_data$total_temp, 1)
+scaled_data$total_hum_0 <-dplyr::lag(scaled_data$total_hum, 0)
+scaled_data$total_windImpact_0 <-dplyr::lag(scaled_data$total_windImpact, 0)
+
+
+scaled_data_lags_1 <- scaled_data %>% na.omit()
+
+######################x
+## pro logaritmická
+
+
+
+
+######################x
+## pro škálovaná logaritmická
 
 #########################
 ####################x###xx
