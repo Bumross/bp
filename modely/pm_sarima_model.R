@@ -49,8 +49,7 @@ qqline(residuals(sarima_model), col="red")
 #######################
 # logaritmuju - rezidua nejsou normálního rozložení
 
-merged_data$log_total_pm <- log(merged_data$total_pm)
-ts_pm_log <- ts(merged_data$log_total_pm, frequency = 24, start = c(year(min(merged_data$hour)), yday(min(merged_data$hour))))
+ts_pm_log <- ts(log_data$total_pm, frequency = 24, start = c(year(min(merged_data$hour)), yday(min(merged_data$hour))))
 
 sarima_model_log <- auto.arima(ts_pm_log, d=1, D=1, 
                                seasonal=TRUE, stepwise=FALSE, approximation=FALSE, 
@@ -81,3 +80,66 @@ checkresiduals(sarima_model_log)
 
 # sarima_model_log 
 # nejlepší model samostatné časové řady
+
+
+
+############################################################################
+############################################################################
+############################################################################
+# tydenni sezonnost
+
+
+par(mfrow=c(2,1))
+acf(merged_data_week$total_pm, lag.max=21, main="ACF PM koncentrace (týden)")
+pacf(merged_data_week$total_pm, lag.max=21, main="PACF PM koncentrace (týden)")
+par(mfrow=c(1,1))
+
+
+
+# diference = 1, musím s tím počítat dále
+# pokračuji zatím pouze s denní sezónností
+# acf naznačuje sezónní nestacionaritu - volím d=1
+
+ts_pm_week <- ts(merged_data_week$total_pm, frequency = 21, start = c(year(min(merged_data$hour)), yday(min(merged_data$hour))))
+plot(ts_pm_week, main="Časová řada PM koncentrace", ylab="PM")
+
+
+sarima_model_week <- auto.arima(ts_pm_week, d=1, D=1, 
+                           seasonal=TRUE, stepwise=FALSE, approximation=FALSE, 
+                           trace=TRUE, lambda=NULL)
+
+summary(sarima_model_week)
+
+# sarima 
+
+
+#######################
+# logaritmuju - rezidua nejsou normálního rozložení
+
+ts_pm_log_week <- ts(log_data$total_pm, frequency = 21, start = c(year(min(merged_data$hour)), yday(min(merged_data$hour))))
+
+sarima_model_log_week <- auto.arima(ts_pm_log_week, d=1, D=1, 
+                               seasonal=TRUE, stepwise=FALSE, approximation=FALSE, 
+                               trace=TRUE, lambda=NULL)
+
+
+sarima_model_log_week <- Arima(ts_pm_log_week, 
+                          order = c(1,1,1),         
+                          seasonal = list(order = c(2,1,0), period = 24),     
+                          method = "ML") 
+
+
+summary(sarima_model_log_week)
+# sarima 1 1 1, 2 1 0
+
+par(mfrow=c(2,1))
+acf(residuals(sarima_model_log_week), main="ACF reziduí SARIMA modelu (log)")
+pacf(residuals(sarima_model_log_week), main="PACF reziduí SARIMA modelu (log)")
+par(mfrow=c(1,1))
+
+Box.test(residuals(sarima_model_log_week), type="Ljung-Box")
+qqnorm(residuals(sarima_model_log_week))
+qqline(residuals(sarima_model_log_week), col="red")
+
+checkresiduals(sarima_model_log_week)
+

@@ -153,3 +153,43 @@ rm(wind)
 
 rm(csv_files)
 rm(path)
+
+
+##########################################################################
+
+# agregace dat do 3 zapisu denne - 8, 16, 24
+
+merged_data <- merged_data %>%
+  mutate(day_period = case_when(
+    hour(hour) >= 0 & hour(hour) < 8  ~ format(hour, "%Y-%m-%d 08:00:00"),
+    hour(hour) >= 8 & hour(hour) < 16 ~ format(hour, "%Y-%m-%d 16:00:00"),
+    hour(hour) >= 16 & hour(hour) < 24 ~ format(hour, "%Y-%m-%d 00:00:00", tz = "UTC")  # Další den v 00:00
+  )) %>%
+  mutate(day_period = as.POSIXct(day_period, tz = "UTC"))  # Převod na časový formát
+
+merged_data_week <- merged_data %>%
+  group_by(day_period) %>%
+  summarise(
+    total_temp = mean(total_temp, na.rm = TRUE),
+    total_hum = mean(total_hum, na.rm = TRUE),
+    total_pressure = mean(total_pressure, na.rm = TRUE),
+    total_windSpeed = mean(total_windSpeed, na.rm = TRUE),
+    total_windImpact = mean(total_windImpact, na.rm = TRUE),
+    total_volume = mean(total_volume, na.rm = TRUE),
+    total_pm = sum(total_pm, na.rm = TRUE),
+    avg_no2 = mean(avg_no2, na.rm = TRUE),
+    vehicle_count = sum(vehicle_count, na.rm = TRUE),  # SUMA pro vozidla!
+    .groups = "drop"
+  ) %>%
+  rename(hour = day_period)
+
+log_data_week <- merged_data_week %>%
+  mutate(across(-hour, ~ log(. + 1), .names = "{.col}"))
+
+log_scaled_data_week <- log_data_week %>%
+  mutate(across(-hour, scale, .names = "{.col}"))
+
+scaled_data_week <- merged_data_week %>%
+  mutate(across(-hour, scale, .names = "{.col}"))
+
+
