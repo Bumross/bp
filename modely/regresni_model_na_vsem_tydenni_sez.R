@@ -66,5 +66,7 @@ coeftest(arimax_scaled_168)
 residuals_arimax_scaled_168 <- residuals(arimax_scaled_168)
 lm_model_scaled_168 <- lm(residuals_arimax_scaled_168 ~ x_reg_scaled)
 
+
+
 bgtest(lm_model_scaled_168)
 bptest(lm_model_scaled_168) # nekoukat na cisla, okometrie >>>>
