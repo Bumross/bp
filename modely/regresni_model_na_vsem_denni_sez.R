@@ -38,15 +38,20 @@ par(mfrow=c(1,1))
 
 # teplota 1, vlhkost 0, tlak 1, vliv 0-1, no2 0-1, rychlost větru 0-1, auta 0-1
 
+
+
+
+
+
 ################################################################################
 # použití lagů 
 
 ######################x
 ## pro normální data
 
-merged_data$vehicle_count_1 <- dplyr::lag(merged_data$vehicle_count, 1)
+merged_data$vehicle_count_0 <- dplyr::lag(merged_data$vehicle_count, 0)
 merged_data$avg_no2_0 <- dplyr::lag(merged_data$avg_no2, 0)
-merged_data$total_windSpeed_1 <- dplyr::lag(merged_data$total_windSpeed, 1)
+merged_data$total_windSpeed_0 <- dplyr::lag(merged_data$total_windSpeed, 0)
 merged_data$total_pressure_1 <- dplyr::lag(merged_data$total_pressure, 1)
 merged_data$total_temp_1 <- dplyr::lag(merged_data$total_temp, 1)
 merged_data$total_hum_0 <- dplyr::lag(merged_data$total_hum, 0)
@@ -54,17 +59,21 @@ merged_data$total_windImpact <- dplyr::lag(merged_data$total_windImpact, 0)
 
 
 
-merged_data_lags_1 <- merged_data %>% na.omit()
+merged_data_lags <- merged_data %>% na.omit()
 
-ts_pm_log_clean <- ts(merged_data_clean$log_total_pm, frequency = , 
-                      start = c(year(min(merged_data_clean$hour)), 
-                                yday(min(merged_data_clean$hour))))
+ts_pm_merged_lag <- ts(log_data$total_pm, frequency = 24, 
+                      start = c(year(min(merged_data_lags_1$hour)), 
+                                yday(min(merged_data_lags_1$hour))))
+
+
+
+
 
 
 ######################x
 ## pro škálovaná
-scaled_data$vehicle_count_1 <-dplyr::lag(scaled_data$vehicle_count, 1)
-scaled_data$avg_no2_1 <-dplyr::lag(scaled_data$avg_no2, 1)
+scaled_data$vehicle_count_0 <-dplyr::lag(scaled_data$vehicle_count, 0)
+scaled_data$avg_no2_0 <-dplyr::lag(scaled_data$avg_no2, 0)
 scaled_data$total_windSpeed_0 <-dplyr::lag(scaled_data$total_windSpeed, 0)
 scaled_data$total_pressure_1 <-dplyr::lag(scaled_data$total_pressure, 1)
 scaled_data$total_temp_1 <-dplyr::lag(scaled_data$total_temp, 1)
@@ -72,36 +81,133 @@ scaled_data$total_hum_0 <-dplyr::lag(scaled_data$total_hum, 0)
 scaled_data$total_windImpact_0 <-dplyr::lag(scaled_data$total_windImpact, 0)
 
 
-scaled_data_lags_1 <- scaled_data %>% na.omit()
+scaled_data_lags <- scaled_data %>% na.omit()
+
+
+ts_pm_log_lag <- ts(log_data$total_pm[-1], frequency = 24, 
+                      start = c(year(min(scaled_data_lags$hour)), 
+                                yday(min(scaled_data_lags$hour))))
+
+# potrebuju oriznout casovou radu, aby sedely delky (lag posun o 1 hodnotu)
+# [-1] znamena - vynechani prvni hodnoty
+
+
+
+
 
 ######################x
 ## pro logaritmická
+log_data$vehicle_count_0 <-dplyr::lag(log_data$vehicle_count, 0)
+log_data$avg_no2_0 <-dplyr::lag(log_data$avg_no2, 0)
+log_data$total_windSpeed_0 <-dplyr::lag(log_data$total_windSpeed, 0)
+log_data$total_pressure_1 <-dplyr::lag(log_data$total_pressure, 1)
+log_data$total_temp_1 <-dplyr::lag(log_data$total_temp, 1)
+log_data$total_hum_0 <-dplyr::lag(log_data$total_hum, 0)
+log_data$total_windImpact_0 <-dplyr::lag(log_data$total_windImpact, 0)
+
+
+log_data_lags <- log_data %>% na.omit()
+
+
+ts_pm_log_lag <- ts(log_data$total_pm, frequency = 24, 
+                      start = c(year(min(log_data_lags$hour)), 
+                                yday(min(log_data_lags$hour))))
 
 
 
 
 ######################x
 ## pro škálovaná logaritmická
+log_scaled_data$vehicle_count_0 <-dplyr::lag(log_scaled_data$vehicle_count, 0)
+log_scaled_data$avg_no2_0 <-dplyr::lag(log_scaled_data$avg_no2, 0)
+log_scaled_data$total_windSpeed_0 <-dplyr::lag(log_scaled_data$total_windSpeed, 0)
+log_scaled_data$total_pressure_1 <-dplyr::lag(log_scaled_data$total_pressure, 1)
+log_scaled_data$total_temp_1 <-dplyr::lag(log_scaled_data$total_temp, 1)
+log_scaled_data$total_hum_0 <-dplyr::lag(log_scaled_data$total_hum, 0)
+log_scaled_data$total_windImpact_0 <-dplyr::lag(log_scaled_data$total_windImpact, 0)
+
+
+log_scaled_data_lags <- log_data %>% na.omit()
+
+
+ts_pm_log_lag <- ts(log_data$total_pm, frequency = 24, 
+                    start = c(year(min(log_data_lags$hour)), 
+                              yday(min(log_data_lags$hour))))
+
+
+
 
 #########################
 ####################x###xx
 # Vytvoření matice regresorů
-x_reg <- as.matrix(merged_data_clean[, c("log_vehicle_count_lag5", 
-                                   "log_avg_no2_lag6", 
-                                   "log_total_windSpeed_lag1", 
-                                   "total_pressure_lag2", 
-                                   "total_temp_lag2",
-                                   "log_total_hum_lag5")])
 
 
-arimax_seasonal <- auto.arima(ts_pm_log_clean, 
-                              xreg = x_reg, 
+## s lagy, škálované
+# pouzivam pouze skalovana z historickych duvodu
+# (pred tim nic jinyho nez skalovany data nedavaly smysl)
+
+x_reg_scaled <- as.matrix(scaled_data_lags[, c(
+                                   "vehicle_count_0", 
+                                   "avg_no2_0", 
+                                   "total_windSpeed_0", 
+                                   "total_pressure_1", 
+                                   "total_temp_1",
+                                   "total_hum_0",
+                                   "total_windImpact_0")])
+
+# nepoustet, nize je arima uz s vypocitanyma slozkama
+arimax_seasonal <- auto.arima(ts_pm_log_lag, 
+                              xreg = x_reg_scaled, 
                               d = 1,      
                               D = 1,      
                               seasonal = TRUE,  
                               stepwise = FALSE, 
                               approximation = FALSE, 
                               trace = TRUE)  
+## 111, 210
+
+arimax_seasonal <- Arima(ts_pm_log_lag, 
+                   order = c(1,1,1),        
+                   seasonal = list(order = c(2,1,0), period = 24),  
+                   xreg = x_reg_scaled,  
+                   method = "CSS-ML")  
+
+
+summary(arimax_seasonal)
+# lag 1 u teploty neprospiva, zkusim pouzit spise lag 0 pro teplotu
+
+x_reg_scaled <- as.matrix(scaled_data_lags[, c(
+  "vehicle_count_0", 
+  "avg_no2_0", 
+  "total_windSpeed_0", 
+  "total_pressure", 
+  "total_temp",
+  "total_hum_0",
+  "total_windImpact_0")])
+
+arimax_seasonal <- Arima(ts_pm_log_lag, 
+                         order = c(1,1,1),        
+                         seasonal = list(order = c(2,1,0), period = 24),  
+                         xreg = x_reg_scaled,  
+                         method = "CSS-ML")  
+
+
+summary(arimax_seasonal)
+### odebírám tlak a windspeed
+
+x_reg_scaled <- as.matrix(scaled_data_lags[, c(
+  "vehicle_count_0", 
+  "avg_no2_0", 
+  "total_temp",
+  "total_hum_0",
+  "total_windImpact_0")])
+
+arimax_seasonal <- Arima(ts_pm_log_lag, 
+                         order = c(1,1,1),        
+                         seasonal = list(order = c(2,1,0), period = 24),  
+                         xreg = x_reg_scaled,  
+                         method = "CSS-ML")  
+
 
 summary(arimax_seasonal)
 
@@ -115,245 +221,15 @@ Box.test(residuals(arimax_seasonal), type="Ljung-Box")
 qqnorm(residuals(arimax_seasonal))
 qqline(residuals(arimax_seasonal), col="red")
 
-#################################################################
-##################################################################
-## predem ten model je zvlustni, zkusim to udelat bez tech lagu
-x_reg_nolag <- as.matrix(merged_data[, c("log_vehicle_count", 
-                                               "log_avg_no2", 
-                                               "log_total_windSpeed",
-                                               "log_total_pressure", 
-                                               "log_total_temp",
-                                               "log_total_hum")])
-
-# Spuštění ARIMAX modelu bez lagů
-arimax_nolag <- auto.arima(ts_pm_log, 
-                           xreg = x_reg_nolag, 
-                           d = 1,      
-                           D = 1,      
-                           seasonal = TRUE,  
-                           stepwise = FALSE, 
-                           approximation = FALSE, 
-                           trace = TRUE)
-
-summary(arimax_nolag)
-
-coeftest(arimax_nolag)
-
-residuals_arimax <- residuals(arimax_nolag)
-lm_model <- lm(residuals_arimax ~ x_reg_nolag)
-bgtest(lm_model)
-bptest(lm_model) ## to je tim, ze jsem zapomnel skalovat :-)
-
-#####################################################################
-# skalovani dat
-
-# zatim nejlepsi model
-
-merged_data_scaled <- merged_data %>%
-  mutate(across(c(vehicle_count, avg_no2, total_windSpeed, 
-                  total_pressure, total_temp, total_hum), scale))
-
-x_reg_scaled <- as.matrix(merged_data_scaled[, c("vehicle_count", "avg_no2", 
-                                                 "total_windSpeed", "total_pressure", 
-                                                 "total_temp", "total_hum")])
+checkresiduals(arimax_seasonal)
 
 
-arimax_scaled <- auto.arima(ts(merged_data_scaled$log_total_pm, frequency = 24), 
-                            xreg = x_reg_scaled, 
-                            d = 1,      
-                            D = 1,      
-                            seasonal = TRUE,  
-                            stepwise = FALSE, 
-                            approximation = FALSE, 
-                            trace = TRUE)
-
-summary(arimax_scaled)
-
-par(mfrow=c(2,1))
-acf(residuals(arimax_scaled), main="ACF reziduí ARIMAX modelu (škálovaný)")
-pacf(residuals(arimax_scaled), main="PACF reziduí ARIMAX modelu (škálovaný)")
-par(mfrow=c(1,1))
-
-Box.test(residuals(arimax_scaled), type="Ljung-Box")
-
-qqnorm(residuals(arimax_scaled))
-qqline(residuals(arimax_scaled), col="red")
-
-coeftest(arimax_scaled)
-
-residuals_arimax_scaled <- residuals(arimax_scaled)
-lm_model_scaled <- lm(residuals_arimax_scaled ~ x_reg_scaled)
-bgtest(lm_model_scaled)
-bptest(lm_model_scaled) 
-
-
-#########################################
-
-
-arimax_pm <- Arima(ts(merged_data_scaled$log_total_pm, frequency = 24), 
-                   order = c(1,1,1),        
-                   seasonal = list(order = c(2,1,0), period = 24),  
-                   xreg = x_reg_scaled,  
-                   method = "CSS-ML")            
-
-summary(arimax_pm)
-
-par(mfrow=c(2,1))
-acf(residuals(arimax_pm), main="ACF reziduí ARIMAX modelu (PM koncentrace)")
-pacf(residuals(arimax_pm), main="PACF reziduí ARIMAX modelu (PM koncentrace)")
-par(mfrow=c(1,1))
-
-Box.test(residuals(arimax_pm), type="Ljung-Box")
-
-qqnorm(residuals(arimax_pm))
-qqline(residuals(arimax_pm), col="red")
-
-coeftest(arimax_pm)
-
-residuals_arimax_pm <- residuals(arimax_pm)
-lm_model_pm <- lm(residuals_arimax_pm ~ x_reg_log_scaled)
-
-summary(lm_model_pm)
-
-
-bgtest(lm_model_pm)
-bptest(lm_model_pm)
-
-###############################
-# bez toho tlaku
-
-x_reg_scaled <- as.matrix(merged_data_scaled[, c("vehicle_count", "avg_no2", 
-                                                 "total_windSpeed", "total_temp", 
-                                                 "total_hum")])
-
-ts_pm_log_scaled <- ts(merged_data_scaled$log_total_pm, frequency = 24)
-
-arimax_pm <- Arima(ts_pm_log_scaled, 
-                   order = c(1,1,1),        
-                   seasonal = list(order = c(2,1,0), period = 24),  
-                   xreg = x_reg_scaled,  
-                   method = "CSS-ML") 5           
-
-summary(arimax_pm)
-
-par(mfrow=c(2,1))
-acf(residuals(arimax_pm), main="ACF reziduí ARIMAX modelu (PM koncentrace)")
-pacf(residuals(arimax_pm), main="PACF reziduí ARIMAX modelu (PM koncentrace)")
-par(mfrow=c(1,1))
-
-Box.test(residuals(arimax_pm), type="Ljung-Box")
-
-qqnorm(residuals(arimax_pm))
-qqline(residuals(arimax_pm), col="red")
-
-coeftest(arimax_pm)
-
-residuals_arimax_pm <- residuals(arimax_pm)
-lm_model_pm <- lm(residuals_arimax_pm ~ x_reg_scaled)
-
-summary(lm_model_pm)
-
-bgtest(lm_model_pm)
-bptest(lm_model_pm)
-
-
-
-checkresiduals(arimax_pm)
-
-
-
-###############################
-# vyzkouseni AR=2
-# Počet Inf v regresorech
-
-arimax_pm_adj <- Arima(ts_pm_log_scaled, 
-                       order = c(2,1,1),        
-                       seasonal = list(order = c(2,1,0), period = 24),  
-                       xreg = x_reg_scaled,  
-                       method = "CSS-ML")            
-
-summary(arimax_pm_adj)
+# nejlepsi model, ktereho jsem mohl dosahnout
 
 
 
 
 ########################################################################
-# skalovane + logaritmovane
-
-merged_data_log_scaled <- merged_data %>%
-  mutate(across(c(vehicle_count, avg_no2, total_windSpeed, 
-                  total_pressure, total_temp, total_hum), ~ log(. + 1))) %>%
-  mutate(across(c(vehicle_count, avg_no2, total_windSpeed, 
-                  total_pressure, total_temp, total_hum), scale))
-
-x_reg_log_scaled <- as.matrix(merged_data_log_scaled[, c("vehicle_count", "avg_no2", 
-                                                         "total_windSpeed", "total_pressure", 
-                                                         "total_temp", "total_hum")])
-
-
-ts_pm_log_scaled <- ts(merged_data_log_scaled$log_total_pm, frequency = 24)
-
-arimax_log_scaled <- auto.arima(ts_pm_log_scaled, 
-                                xreg = x_reg_log_scaled, 
-                                d = 1,      
-                                D = 1,      
-                                seasonal = TRUE,  
-                                stepwise = FALSE, 
-                                approximation = FALSE, 
-                                trace = TRUE)
-
-summary(arimax_log_scaled)
-
-par(mfrow=c(2,1))
-acf(residuals(arimax_log_scaled), main="ACF reziduí ARIMAX modelu (log+škálovaný)")
-pacf(residuals(arimax_log_scaled), main="PACF reziduí ARIMAX modelu (log+škálovaný)")
-par(mfrow=c(1,1))
-
-Box.test(residuals(arimax_log_scaled), type="Ljung-Box")
-
-qqnorm(residuals(arimax_log_scaled))
-qqline(residuals(arimax_log_scaled), col="red")
-
-coeftest(arimax_log_scaled)
-
-residuals_arimax_log_scaled <- residuals(arimax_log_scaled)
-lm_model_log_scaled <- lm(residuals_arimax_log_scaled ~ x_reg_log_scaled)
-
-
-bgtest(lm_model_log_scaled)
-bptest(lm_model_log_scaled)
-
 ########################################################################
 ########################################################################
-########################################################################
-# model pouze na pocasi
-
-
-x_reg_weather <- as.matrix(merged_data_scaled[, c("avg_no2", 
-                                                  "total_windSpeed", 
-                                                  "total_temp", 
-                                                  "total_hum")])  # Bez vehicle_count
-
-
-arimax_weather <- auto.arima(ts_pm_log_scaled, 
-                                  xreg = x_reg_weather, 
-                                  d = 1,      
-                                  D = 1,      
-                                  seasonal = TRUE,  
-                                  stepwise = FALSE, 
-                                  approximation = FALSE, 
-                                  trace = TRUE) 
-summary(arimax_weather)
-
-par(mfrow=c(2,1))
-acf(residuals(arimax_weather), main="ACF reziduí ARIMAX modelu (Počasí)")
-pacf(residuals(arimax_weather), main="PACF reziduí ARIMAX modelu (Počasí)")
-par(mfrow=c(1,1))
-
-Box.test(residuals(arimax_weather), type="Ljung-Box")
-
-qqnorm(residuals(arimax_weather))
-qqline(residuals(arimax_weather), col="red")
-
-coeftest(arimax_weather)
 
