@@ -51,4 +51,46 @@ par(mfrow=c(1,1))
 
 
 
+#####
+# CCF
+
+# tydenni data (3 zapisy denne - 8, 16, 24)
+par(mfrow=c(2,2))  
+
+ccf(log_data$total_pm, merged_data_week$vehicle_count, lag.max=21, main="CCF: log(PM) vs. Auta")
+ccf(log_data$total_pm, merged_data_week$avg_no2, lag.max=21, main="CCF: log(PM) vs. NO2")
+ccf(log_data$total_pm, merged_data_week$total_windSpeed, lag.max=21, main="CCF: log(PM) vs. Rychlost větru")
+ccf(log_data$total_pm, merged_data_week$total_hum, lag.max=21, main="CCF: log(PM) vs. Vlhkost")
+
+
+ccf(log_data$total_pm, merged_data_week$total_temp, lag.max=21, main="CCF: log(PM) vs. Teplota")
+ccf(log_data$total_pm, merged_data_week$total_hum, lag.max=21, main="CCF: log(PM) vs. Vlhkost")
+ccf(log_data$total_pm, merged_data_week$total_pressure, lag.max=21, main="CCF: log(PM) vs. Tlak")
+ccf(log_data$total_pm, merged_data_week$total_windImpact, lag.max=21, main="CCF: log(PM) vs. Vliv větru")
+
+par(mfrow=c(1,1))  
+
+
+
+# denni data
+plot_ccf <- function(x, y, x_label, y_label) {
+  ccf_values <- ccf(x, y, lag.max = 24, plot = FALSE)
+  df_ccf <- data.frame(lag = ccf_values$lag, correlation = ccf_values$acf)
+  
+  ggplot(df_ccf, aes(x = lag, y = correlation)) +
+    geom_line() +
+    geom_point() +
+    ggtitle(paste("CCF mezi", x_label, "a", y_label)) +
+    xlab("Lag (hodiny)") +
+    ylab("Korelace") +
+    theme_minimal()
+}
+
+
+variables <- c("total_temp", "total_hum", "total_pressure", "total_windSpeed", 
+               "total_windImpact", "total_volume", "avg_no2", "vehicle_count")
+
+for (var in variables) {
+  print(plot_ccf(merged_data$total_pm, merged_data[[var]], "total_pm", var))
+}
 
