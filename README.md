@@ -15,3 +15,6 @@ Práce se zaměřuje na analýzu časových řad environmentálních a dopravní
   - **Sezónní modely** pro analýzu prachových částic.  
   - **Regresní modely**, kde závislou proměnnou je časová řada s koncentrací prachových částic.  
 - **`/bp_text/`** – obsahuje textový dokument s postupem práce, shrnutím konzultací, vizualizací výstupů a doprovodnými poznámkami.  
+
+## 📊 Použitá data
+Data pochází z Datového centra Ústeckého kraje (DCÚK) a obsahují informace o dopravě, kvalitě ovzduší a meteorologických podmínkách v Bílině.
