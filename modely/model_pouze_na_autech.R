@@ -336,6 +336,7 @@ arimax_car_week <- Arima(ts_pm_log_week,
 
 
 summary(arimax_car_week)
+checkresiduals(arimax_car_week)
 
 ##############################################################
 # lagy nepocitam, v CCF neukazaly zadny posun (obdobi 8 hodin je dost dlouha doba)
