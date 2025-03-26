@@ -65,7 +65,7 @@ x_reg_scaled_week <- as.matrix(scaled_data_week[, c("vehicle_count",
 
 arimax_car_scaled_week <- Arima(ts_pm_log_week, 
                          order = c(3,1,0),        
-                         seasonal = list(order = c(2,1,0), period = 24),  
+                         seasonal = list(order = c(2,1,0), period = 21),  
                          xreg = x_reg_scaled_week,  
                          method = "CSS-ML")  
 
@@ -92,7 +92,17 @@ lm_model_scaled_week <- lm(residuals_arimax_scaled_week ~ x_reg_scaled_week)
 
 checkresiduals(arimax_car_scaled_week)
 
+# koeficient determinace
 
+predikce <- arimax_car_scaled_week$fitted
+skutecne <- arimax_car_scaled_week$x
+rezidua <- skutecne - predikce
+var_res <- var(rezidua, na.rm = TRUE)
+var_celk <- var(skutecne, na.rm = TRUE)
+
+R2 <- 1 - (var_res / var_celk)
+
+cat("Koeficient determinace (R²):", R2)
 
 
 

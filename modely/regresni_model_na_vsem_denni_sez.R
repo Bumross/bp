@@ -224,9 +224,21 @@ qqline(residuals(arimax_seasonal), col="red")
 checkresiduals(arimax_seasonal)
 
 
+coeftest(arimax_seasonal)
 # nejlepsi model, ktereho jsem mohl dosahnout
 
 
+# koeficient determinace:
+
+predikce <- arimax_seasonal$fitted
+skutecne <- arimax_seasonal$x
+rezidua <- skutecne - predikce
+var_res <- var(rezidua, na.rm = TRUE)
+var_celk <- var(skutecne, na.rm = TRUE)
+
+R2 <- 1 - (var_res / var_celk)
+
+cat("Koeficient determinace (R²):", R2)
 
 
 ########################################################################
