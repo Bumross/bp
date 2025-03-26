@@ -10,8 +10,8 @@ library(forecast)
 
 ################### Načtení dat
 # vitr
-path <- "~\\bo_data_analysis\\data\\meteo_2024_11_01.csv"
-wind <- read.csv(path)
+
+wind <- read.csv(meteo_path)
 
 
 
@@ -45,9 +45,8 @@ final_summary <- hourly_summary %>%
 
 
 # auta
-path <- "~\\bo_data_analysis\\data\\ddb_data"
 
-csv_files <- list.files(path = path, pattern = "\\.csv$", full.names = TRUE)
+csv_files <- list.files(path = cars_path, pattern = "\\.csv$", full.names = TRUE)
 
 
 # načtení dat ddb do jednoho data frame:
@@ -76,8 +75,8 @@ sum_60 <- sum_60 %>%
 
 
 # ovzdusi
-path <- "~\\bo_data_analysis\\data\\pm_2024_11_01.csv"
-polution <- read.csv(path)
+
+polution <- read.csv(ovzdusi_path)
 
 polution$date <- as.POSIXct(polution$date, format="%Y-%m-%d %H:%M:%OS")
 
