@@ -11,8 +11,8 @@ library(forecast)
 
 
 par(mfrow=c(2,1))
-acf(merged_data$total_pm, lag.max=24, main="ACF PM koncentrace (24 hodin)")
-pacf(merged_data$total_pm, lag.max=24, main="PACF PM koncentrace (24 hodin)")
+acf(merged_data$total_pm, lag.max=24, main="ACF PM_25 koncentrace (24 hodin)")
+pacf(merged_data$total_pm, lag.max=24, main="PACF PM_25 koncentrace (24 hodin)")
 par(mfrow=c(1,1))
 
 par(mfrow=c(2,1))
