@@ -25,7 +25,7 @@ polution <- polution_path %>%
 polution_filtered <- polution %>%
   select(date, sensor_id, data_pm10, data_pm25, data_pm40, data_pm100, data_no2)
 
-write.csv(polution_filtered, "polution.csv", row.names = FALSE)
+#write.csv(polution_filtered, "polution.csv", row.names = FALSE)
 
 
 ###
@@ -37,7 +37,7 @@ wind <- wind_path %>%
 wind_filtered <- wind %>%
   select(-id, -data_windDir, -data_leafWetness)
 
-write.csv(wind_filtered, "meteo.csv", row.names = FALSE)
+#write.csv(wind_filtered, "meteo.csv", row.names = FALSE)
 
 
 ### auta

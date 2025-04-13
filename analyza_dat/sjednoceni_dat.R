@@ -30,4 +30,4 @@ spojena_data %>%
   filter(if_any(everything(), is.na)) %>%
   View()
 
-write.csv(spojena_data, "spojena_data.csv")
+#write.csv(spojena_data, "spojena_data.csv")
