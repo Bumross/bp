@@ -185,6 +185,12 @@ temp.pom[c((kde-2):(kde + 2)),]
 temp.pom[,3] <- ifelse(is.na(temp.pom[,3]), (8.95+12.88)/2, temp.pom[,3])
 temp.per <- temp.pom[,3]
 
+#### nahrazeni tohoto kodu pomoci funkce 
+temp.per <- na.approx(temp, x = index, rule = 2)
+sum(is.na(temp.per))
+
+###
+
 # periodogram - hleda periody :)
 periodogram(temp.per)$spec[1:20]
   # tak mam periodogram a nic moc na nem neni :(
