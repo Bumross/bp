@@ -1,3 +1,5 @@
+# nutno mit nactena data "nacteni_dat_z_dcuku.R" - nesjednocovat auta do jednoho :-)
+
 #### popis polution
 
 dim(polution)

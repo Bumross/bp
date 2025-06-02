@@ -1,4 +1,4 @@
-polution <- polution %>%
+polution <- polution_filtered %>%
   mutate(
     hour = floor_date(as.POSIXct(as.character(date)), unit = "hour")
   ) %>%

@@ -3,6 +3,7 @@ library(ggplot2)
 library(psych)
 library(corrplot)
 library(scales)
+library(GGally)
 
 # nutno mit nactene data ze slozky "nacteni_dat" ze souboru "nacteni_dat.R"
 
@@ -15,13 +16,39 @@ mesicni_breaks <- seq(from = as.Date("2024-01-01"), to = as.Date("2025-02-01"), 
  
 
 # korelace mezi pm
-cor_matrix <- cor(
+polution.cor.matrix <- cor(
   polution[, c("data_pm10", "data_pm25", "data_pm40", "data_pm100")],
   use = "complete.obs",  # ignoruje NA
   method = "pearson"     # klasická Pearsonova korelace
 )
 
-print(cor_matrix)
+print(polution.cor.matrix)
+
+
+
+required_cols <- c("data_pm10", "data_pm25", "data_pm40", "data_pm100")
+
+if (!all(required_cols %in% names(polution))) {
+  stop("Některý ze sloupců neexistuje v datovém rámci 'polution'")
+}
+
+polution <- polution %>%
+  mutate(across(
+    all_of(required_cols),
+    ~ ifelse(month(hour) == 7 & . > 25, NA, .)
+  ))
+
+polution_clean <- polution %>%
+  select(all_of(required_cols)) %>%
+  drop_na()
+
+ggpairs(
+  polution_clean,
+  upper = list(continuous = wrap("cor", size = 4)),
+  lower = list(continuous = wrap("points", alpha = 0.3)),
+  diag = list(continuous = "densityDiag")
+) +
+  ggtitle("Korelace hodnot prachových částic")
 #### vhodne zvolit pouze jednu - data_pm100, volim si tebe!
 
 

@@ -64,6 +64,18 @@ data$data_no2[data$data_no2 > 125] <- 125
 
 
 
+library(lubridate)
+
+data <- data %>%
+  mutate(hodina = hour(cas))
+
+
+data <- data %>%
+  mutate(
+    den_cislo = wday(cas, week_start = 1),
+    vsedni_den = ifelse(den_cislo %in% c(6, 7), 0, 1)
+  )
+
 
 
 saveRDS(data, "data/data_procesovane/spojena_data_upravena.rds")
