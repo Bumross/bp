@@ -264,6 +264,7 @@ model_auta4 <- data_ts %>%
         velke_svatky + den_v_tydnu + hodina
     )
   )
+# 0 1 4,   2 0 0
 
 model_auta4 %>%
   gg_tsresiduals()
@@ -286,11 +287,11 @@ augment(model_auta4) %>%
 res <- residuals(model_auta4)$arima_final
 res4 <- augment(model_auta4)$.resid
 
-var(res3, na.rm = TRUE)
-var(diff(res3, 1), na.rm = TRUE)          # klasická diference
-var(diff(res3, 24), na.rm = TRUE)         # denní sezónní diference
-var(diff(diff(res3, 1), 1), na.rm = TRUE) # 2. klasická diference
-var(diff(res3, 7*24), na.rm = TRUE)       # týdenní sezónní diference
+var(res4, na.rm = TRUE)
+var(diff(res4, 1), na.rm = TRUE)          # klasická diference
+var(diff(res4, 24), na.rm = TRUE)         # denní sezónní diference
+var(diff(diff(res4, 1), 1), na.rm = TRUE) # 2. klasická diference
+var(diff(res4, 7*24), na.rm = TRUE)       # týdenní sezónní diference
 
 augment(model_auta4) %>%
   features(.resid, ljung_box, lag = 24)
@@ -306,10 +307,13 @@ augment(model_auta4) %>%
   geom_line(aes(y = .fitted), color = "blue") +
   labs(title = "Model vs. skutečnost (auta)")
 
+
+# AIC 123 097
+# BIC 124 261
+
 ###############################################################################
 # pokus 7
 
-# bez hodiny, bez velkych svatku (v kombinovanem modelu neni vyznamny)
 
 model_auta7 <- data_ts %>%
   model(
@@ -320,14 +324,15 @@ model_auta7 <- data_ts %>%
         den_v_tydnu + velke_svatky
     )
   )
-# 111 101
+# 1 1 1 , 1 0 0
 
 model_auta7 %>%
   gg_tsresiduals()
 
 
 report(model_auta7)
-
+# AIC 124 383
+# BIC 124 627
 
 # acf a pacf
 augment(model_auta7) %>%
@@ -363,6 +368,9 @@ augment(model_auta7) %>%
   geom_line(aes(y = .fitted), color = "blue") +
   labs(title = "Model vs. skutečnost (auta)")
 
+
+
+
 ###############################################################################
 ###############################################################################
 # pokus 8
@@ -375,7 +383,7 @@ model_auta8 <- data_ts %>%
       valid_speed_count ~ 
         fourier(24, K = 4) +
         fourier(168, K = 1) +
-        den_v_tydnu
+        den_v_tydnu + velke_svatky
     )
   )
 # 
@@ -432,7 +440,7 @@ model_auta9 <- data_ts %>%
         velke_svatky
     )
   )
-# 
+# 0 1 1    0 0 1
 
 model_auta9 %>%
   gg_tsresiduals()
@@ -455,11 +463,11 @@ augment(model_auta9) %>%
 res <- residuals(model_auta9)$arima_final
 res8 <- augment(model_auta9)$.resid
 
-var(res3, na.rm = TRUE)
-var(diff(res3, 1), na.rm = TRUE)          # klasická diference
-var(diff(res3, 24), na.rm = TRUE)         # denní sezónní diference
-var(diff(diff(res3, 1), 1), na.rm = TRUE) # 2. klasická diference
-var(diff(res3, 7*24), na.rm = TRUE)       # týdenní sezónní diference
+var(res8, na.rm = TRUE)
+var(diff(res8, 1), na.rm = TRUE)          # klasická diference
+var(diff(res8, 24), na.rm = TRUE)         # denní sezónní diference
+var(diff(diff(res8, 1), 1), na.rm = TRUE) # 2. klasická diference
+var(diff(res8, 7*24), na.rm = TRUE)       # týdenní sezónní diference
 
 augment(model_auta9) %>%
   features(.resid, ljung_box, lag = 24)
@@ -476,28 +484,169 @@ augment(model_auta9) %>%
   labs(title = "Model vs. skutečnost (auta)")
 
 
-
-
-
-
+# AIC 124 521
+# BIC 124 628
 ################################################################################
 ################################################################################
 ################################################################################
 ################################################################################
-# AUTA DENNI
+
+data_ts_hodinove <- data %>%
+  mutate(
+    cas = cas,                               
+    hodina = hour(cas),
+    den_v_tydnu = wday(cas, week_start = 1),          
+    den_v_tydnu = factor(den_v_tydnu, levels = 1:7),
+    mesice = factor(month(cas)),
+    den = date(cas),
+    letni_prazdniny = factor(letni_prazdniny, levels = c(0, 1)),
+    velke_svatky = factor(velke_svatky, levels = c(0, 1))
+ 
+  ) %>%
+  as_tsibble(index = cas) %>%
+  fill_gaps()        
 
 
-auta <- data_denni$valid_speed_count
-den <- data_denni$den_v_tydnu
-svatek <- data_denni$velke_svatky
-prazd <- data_denni$letni_prazdniny
 
-lm1 <- lm(auta ~ as.factor(hod) + as.factor(den) + as.factor(svatek) + as.factor(prazd))
-Anova(lm1)
 
-oldpar <- par(mfrow = c(2,2))
-plot(lm1)
-par(oldpar)
+model_hodinovy <- data_ts_hodinove %>%
+  model(
+    ARIMA(
+      valid_speed_count ~ 
+        velke_svatky + letni_prazdniny +
+        fourier(24, K = 3) + fourier(168, K = 2)
+    )
+  )
+# 203 100
 
-res <- ts(residuals(lm1))
-plot(res)
+model_hodinovy %>%
+  gg_tsresiduals()
+
+
+report(model_hodinovy)
+
+
+# acf a pacf
+augment(model_hodinovy) %>%
+  ACF(.resid, lag_max = 100) %>%
+  autoplot() +
+  labs(title = "ACF reziduí modelu aut")
+
+augment(model_hodinovy) %>%
+  PACF(.resid, lag_max = 100) %>%
+  autoplot() +
+  labs(title = "PACF reziduí modelu aut")
+
+res <- residuals(model_hodinovy)$arima_final
+res8 <- augment(model_hodinovy)$.resid
+
+var(res8, na.rm = TRUE)
+var(diff(res8, 1), na.rm = TRUE)          # klasická diference
+var(diff(res8, 24), na.rm = TRUE)         # denní sezónní diference
+var(diff(diff(res8, 1), 1), na.rm = TRUE) # 2. klasická diference
+var(diff(res8, 7*24), na.rm = TRUE)       # týdenní sezónní diference
+
+augment(model_hodinovy) %>%
+  features(.resid, ljung_box, lag = 24)
+
+augment(model_hodinovy) %>%
+  features(.resid, ljung_box, lag = 168)
+
+glance(model_hodinovy)
+
+augment(model_hodinovy) %>%
+  ggplot(aes(x = cas)) +
+  geom_line(aes(y = valid_speed_count), color = "gray") +
+  geom_line(aes(y = .fitted), color = "blue") +
+  labs(title = "Model vs. skutečnost (auta)")
+
+
+
+# model vypada hodne dobre, fourierovy rady hodne pomohly s rychlostmi vypoctu
+########################x
+# predikce
+
+# musim nejdriv vytvorit dalsi hodnoty, ktere se daji predikovat dopredu
+# cas, svatky, letni_prazdniny
+max_time <- max(data_ts_hodinove$cas)
+
+new_data <- tibble(
+  cas = seq(from = max_time + hours(1), by = "1 hour", length.out = 336)
+) %>%
+  mutate(
+    hodina = hour(cas),
+    den_v_tydnu = wday(cas, week_start = 1),
+    den_v_tydnu = factor(den_v_tydnu, levels = 1:7),
+    mesice = factor(month(cas)),
+    den = date(cas),
+    velke_svatky = factor(0, levels = c(0, 1)),          # předpokládáme že nejsou
+    letni_prazdniny = factor(0, levels = c(0, 1))        # předpokládáme že nejsou
+  ) %>%
+  as_tsibble(index = cas)
+
+
+forecast_hodinovy <- forecast(model_hodinovy, new_data = new_data, level = 95)
+
+autoplot(forecast_hodinovy, data_ts_hodinove) +
+  labs(
+    title = "Predikce počtu projetých aut na 14 dní",
+    x = "Datum a čas",
+    y = "Počet projetých aut za hodinu"
+  ) +
+  scale_x_datetime(date_labels = "%d.%m. %H:%M") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+# chci to vykreslit hezcejc
+#takze beru posledni mesic + predikovane hodnoty
+
+data_last_month <- data_ts_hodinove %>%
+  filter(cas >= max(cas) - days(14))
+
+autoplot(forecast_hodinovy, data_last_month) +
+  labs(
+    title = "Predikce počtu projetých aut na 14 dní",
+    x = "Datum a čas",
+    y = "Počet projetých aut za hodinu"
+  ) +
+  scale_x_datetime(date_labels = "%d.%m.", date_breaks = "3 days") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+##############################################################################
+# testovaci x trenovaci predikce
+
+n_total <- nrow(data_ts_hodinove)
+n_train <- round(n_total * 0.7)
+
+data_train <- data_ts_hodinove %>% slice(1:n_train)
+data_test <- data_ts_hodinove %>% slice((n_train + 1):n_total)
+
+model_train <- data_train %>%
+  model(
+    ARIMA(
+      valid_speed_count ~ 
+        velke_svatky + letni_prazdniny +
+        fourier(24, K = 3) + fourier(168, K = 2) + pdq(2,0,3) + PDQ(1,0,0)
+    )
+  )
+# 203 100
+forecast_test <- forecast(model_train, new_data = data_test)
+
+results <- left_join(
+  forecast_test,
+  data_test %>% select(cas, valid_speed_count),
+  by = "cas"
+)
+
+ggplot(results, aes(x = cas)) +
+  geom_line(aes(y = valid_speed_count.y, color = "Skutečnost")) +
+  geom_line(aes(y = .mean, color = "Predikce")) +
+  labs(
+    title = "Predikce vs. skutečnost",
+    x = "Datum",
+    y = "Počet projetých aut",
+    color = ""
+  ) +
+  scale_color_manual(values = c("Skutečnost" = "black", "Predikce" = "red"))
