@@ -10,6 +10,8 @@ library(tseries)
 library(dynlm)
 library(TSA)
 
+library(fpp3)
+
 # prehled dat
 names(data)
 head(data)
