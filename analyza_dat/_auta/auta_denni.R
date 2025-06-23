@@ -9,7 +9,6 @@ library(lubridate)
 
 
 
-
 ################################################################################
 ################################################################################
 ################################################################################
@@ -38,6 +37,9 @@ data_ts_denni <- data_ts_denni %>%
     mesice = factor(month(datum), levels = 1:12)
   )
 
+
+data_ts_denni <- data_ts_denni %>%
+  slice_head(n = nrow(.) - 1)
 # posledni den je jen polovicni a hazi spatny data, proto vynechavam 16.1.2025
 
 
@@ -155,7 +157,7 @@ augment(model_denni) %>%
   geom_line(aes(y = valid_speed_count, color = "Skutečnost")) +
   geom_line(aes(y = .fitted, color = "Model")) +
   labs(
-    title = "Model vs. skutečnost (auta)",
+    title = "Model vs. skutečnost",
     y = "počet projetých aut za den",
     color = ""
   ) +
@@ -223,9 +225,9 @@ forecast_denni <- forecast(model_denni, new_data = new_data)
 
 autoplot(forecast_denni, data_ts_denni) +
   labs(
-    title = "Predikce počtu projetých aut za den",
+    title = "Predikce počtu projetých vozidel za den",
     x = "Datum",
-    y = "Počet projetých aut"
+    y = "Počet projetých vozidel"
   ) +
   scale_x_date(date_labels = "%m/%Y") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
@@ -256,14 +258,155 @@ results <- left_join(
 )
 
 ggplot(results, aes(x = datum)) +
-  geom_line(aes(y = valid_speed_count.y, color = "Skutečnost")) +
-  geom_line(aes(y = .mean, color = "Predikce")) +
+  geom_line(aes(y = valid_speed_count.y, color = "Skutečnost"), linewidth = 0.7) +
+  geom_line(aes(y = .mean, color = "Predikce"), linewidth = 0.7) +
+  scale_color_manual(values = c("Skutečnost" = "black", "Predikce" = "blue")) +
   labs(
-    title = "Predikce vs. skutečnost",
+    title = "Predikce počtu projetých vozidel vs. skutečnost",
+    x = "Datum",
+    y = "Počet projetých aut",
+    color = "Typ dat"
+  ) +
+  scale_x_date(date_labels = "%d.%m.%y", date_breaks = "7 days") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+ggplot(results, aes(x = cas)) +
+  geom_line(aes(y = valid_speed_count.y, color = "Skutečnost"), linewidth = 0.7) +
+  geom_line(aes(y = .mean, color = "Predikce"), linewidth = 0.7) +
+  scale_color_manual(values = c("Skutečnost" = "black", "Predikce" = "blue")) +
+  labs(
+    title = "Predikce počtu projetých vozidel vs. skutečnost",
+    x = "Datum",
+    y = "Počet projetých vozidel",
+    color = "Typ dat"
+  ) +
+  scale_x_datetime(date_labels = "%d.%m.%y", date_breaks = "7 days") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+
+################################################################################
+################################################################################
+# vypocet rucni vlivu svatku
+
+# prumerne hodnoty podle dne v tydnu:
+prumery_dnu <- data_denni %>%
+  filter(velke_svatky == FALSE, !is.na(valid_speed_count)) %>%
+  group_by(den_v_tydnu) %>%
+  summarise(prumer_dne = mean(valid_speed_count), .groups = "drop")
+
+svatecni_dny <- data_denni %>%
+  filter(velke_svatky == TRUE) %>%
+  select(datum, den_v_tydnu, valid_speed_count)
+
+svatek_vs_prumer <- svatecni_dny %>%
+  left_join(prumery_dnu, by = "den_v_tydnu") %>%
+  mutate(odchylka = valid_speed_count - prumer_dne)
+
+prumerna_odchylka_svatek <- mean(svatek_vs_prumer$odchylka, na.rm = TRUE)
+print(prumerna_odchylka_svatek)
+
+# vyslo celkem velke zaporne cislo, to je divne
+# -14499.49
+
+# kontrola, jake jsou odchylky od svatku
+svatek_vs_prumer %>%
+  select(datum, den_v_tydnu, valid_speed_count, prumer_dne, odchylka)
+
+
+######
+vliv_svatku <- -14499.49
+
+n_total <- nrow(data_ts_denni)
+n_train <- round(n_total * 0.7)
+
+data_train <- data_ts_denni %>% slice(1:n_train)
+data_test <- data_ts_denni %>% slice((n_train + 1):n_total)
+
+model_train <- data_train %>%
+  model(
+    ARIMA(valid_speed_count ~ den_v_tydnu + letni_prazdniny 
+          + pdq(0,0,2)
+          + PDQ(2,0,1,7))
+  )
+
+report(model_train) # 002, 201
+
+forecast_test <- model_train %>%
+  forecast(new_data = data_test)
+
+forecast_df <- forecast_test %>%
+  as_tibble() 
+
+
+# vysledky predikce
+results <- forecast_df %>%
+  mutate(
+    velke_svatky = as.numeric(as.character(velke_svatky))  # přetypování z faktoru
+  ) %>%
+  mutate(
+    predikce_puvodni = .mean,
+    predikce_upravena = if_else(velke_svatky == 1, .mean + vliv_svatku, .mean)
+  )
+
+results <- results %>%
+  left_join(
+    data_test %>%
+      as_tibble() %>%
+      select(datum, skutecnost = valid_speed_count),
+    by = "datum"
+  )
+
+ggplot(results, aes(x = datum)) +
+  geom_line(aes(y = skutecnost, color = "Skutečnost")) +
+  geom_line(aes(y = predikce_upravena, color = "Predikce (upravená)")) +
+  labs(
+    title = "Predikce vs. skutečnost (s ruční korekcí za svátky)",
     x = "Datum",
     y = "Počet projetých aut",
     color = ""
   ) +
-  scale_color_manual(values = c("Skutečnost" = "black", "Predikce" = "blue")) +
+  scale_color_manual(values = c("Skutečnost" = "black", "Predikce (upravená)" = "blue")) +
   scale_x_date(date_labels = "%d.%m.") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+
+fc <- forecast(model_train, new_data = data_test)
+accuracy(fc, data_test)
+
+
+
+
+####
+fitted_train <- model_train %>%
+  fitted()
+
+# Spojení se skutečností
+results_fit <- fitted_train %>%
+  as_tibble() %>%
+  left_join(
+    data_train %>%
+      as_tibble() %>%
+      select(datum, skutecnost = valid_speed_count),
+    by = "datum"
+  )
+
+# Vykreslení
+ggplot(results_fit, aes(x = datum)) +
+  geom_line(aes(y = skutecnost, color = "Skutečnost")) +
+  geom_line(aes(y = .fitted, color = "Fitované hodnoty")) +
+  labs(
+    title = "Fit modelu na trénovacích datech",
+    x = "Datum",
+    y = "Počet projetých aut",
+    color = ""
+  ) +
+  scale_color_manual(values = c("Skutečnost" = "black", "Fitované hodnoty" = "blue")) +
+  theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))

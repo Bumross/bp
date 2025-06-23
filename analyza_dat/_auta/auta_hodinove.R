@@ -522,8 +522,9 @@ model_hodinovy <- data_ts_hodinove %>%
 model_hodinovy %>%
   gg_tsresiduals()
 
-
 report(model_hodinovy)
+
+model_hodinovy %>% augment() %>% features(.resid, ljung_box, lag = 24, dof = 5)
 
 
 # acf a pacf
@@ -585,7 +586,7 @@ new_data <- tibble(
   as_tsibble(index = cas)
 
 
-forecast_hodinovy <- forecast(model_hodinovy, new_data = new_data, level = 95)
+forecast_hodinovy <- forecast(model_hodinovy, new_data = new_data)
 
 autoplot(forecast_hodinovy, data_ts_hodinove) +
   labs(
@@ -611,6 +612,82 @@ autoplot(forecast_hodinovy, data_last_month) +
   ) +
   scale_x_datetime(date_labels = "%d.%m.", date_breaks = "3 days") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+###########
+forecast_hodinovy <- forecast(
+  model_hodinovy,
+  new_data = new_data,
+  level = c(80, 95)
+)
+
+
+resid_sd <- model_hodinovy %>% 
+  residuals() %>% 
+  as_tibble() %>% 
+  pull(.resid) %>% 
+  sd(na.rm = TRUE)
+
+# Dodej 95% a 80% intervaly za použití normální distribuce
+forecast_hodinovy <- forecast_hodinovy %>%
+  mutate(
+    .mean = pmax(.mean, 0),
+    .lower_80 = pmax(.mean - 1.28 * resid_sd, 0),
+    .upper_80 = .mean + 1.28 * resid_sd,
+    .lower_95 = pmax(.mean - 1.96 * resid_sd, 0),
+    .upper_95 = .mean + 1.96 * resid_sd
+  )
+
+
+# Data za posledních 14 dní
+data_last_month <- data_ts_hodinove %>%
+  filter(cas >= max(cas) - days(14))
+
+# Oříznutí predikovaných hodnot pod nulou
+forecast_hodinovy_fixed <- forecast_hodinovy %>%
+  mutate(
+    pred = pmax(.mean, 0),
+    lower = pmax(as.numeric(.lower_95), 0),
+    upper = pmax(as.numeric(.upper_95), 0)
+  )
+
+# Vykreslení
+data_last_month_plot <- data_last_month %>%
+  select(cas, valid_speed_count) %>%
+  mutate(
+    typ = "Skutečnost",
+    y = valid_speed_count
+  )
+
+# Připrav predikci
+forecast_plot <- forecast_hodinovy_fixed %>%
+  as_tibble() %>%
+  select(cas, pred, lower, upper) %>%
+  mutate(
+    typ = "Predikce",
+    y = pred
+  )
+
+# Spoj
+combined_data <- bind_rows(data_last_month_plot, forecast_plot)
+
+# Vykresli
+ggplot(combined_data, aes(x = cas)) +
+  geom_ribbon(
+    data = forecast_plot,
+    aes(ymin = lower, ymax = upper),
+    fill = "lightblue", alpha = 0.4
+  ) +
+  geom_line(aes(y = y, color = typ), linewidth = 0.7) +
+  scale_color_manual(values = c("Skutečnost" = "black", "Predikce" = "blue")) +
+  labs(
+    title = "Predikce počtu projetých vozidel na 14 dní",
+    x = "Datum a čas",
+    y = "Počet projetých aut za hodinu",
+    color = "Typ dat"
+  ) +
+  scale_x_datetime(date_labels = "%d.%m.", date_breaks = "3 days") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
 
 
 
@@ -632,7 +709,8 @@ model_train <- data_train %>%
     )
   )
 # 203 100
-forecast_test <- forecast(model_train, new_data = data_test)
+forecast_test <- forecast(model_train, new_data = data_test) %>%
+  mutate(.mean = pmax(.mean, 0))
 
 results <- left_join(
   forecast_test,
@@ -641,12 +719,82 @@ results <- left_join(
 )
 
 ggplot(results, aes(x = cas)) +
-  geom_line(aes(y = valid_speed_count.y, color = "Skutečnost")) +
-  geom_line(aes(y = .mean, color = "Predikce")) +
+  geom_line(aes(y = valid_speed_count.y, color = "Skutečnost"), linewidth = 0.7) +
+  geom_line(aes(y = .mean, color = "Predikce"), linewidth = 0.7) +
+  scale_color_manual(values = c("Skutečnost" = "black", "Predikce" = "blue")) +
   labs(
-    title = "Predikce vs. skutečnost",
+    title = "Predikce počtu projetých vozidel vs. skutečnost",
     x = "Datum",
-    y = "Počet projetých aut",
-    color = ""
+    y = "Počet projetých vozidel",
+    color = "Typ dat"
   ) +
-  scale_color_manual(values = c("Skutečnost" = "black", "Predikce" = "red"))
+  scale_x_datetime(date_labels = "%d.%m.%y", date_breaks = "7 days") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+accuracy(forecast_test, test_data)
+fc <- forecast(model_train, new_data = data_test)
+accuracy(fc, data_test)
+
+
+
+
+###############################################################################
+##################################################################################
+# dat jen zavislost na dnech v tydnu + svatky
+
+model_auta_bez_f <- data_ts_hodinove %>%
+  model(
+    ARIMA(
+      valid_speed_count ~ 
+        velke_svatky + letni_prazdniny + den_v_tydnu
+    )
+  )
+#102, 010
+
+model_auta_bez_f %>%
+  gg_tsresiduals()
+
+
+report(model_auta_bez_f)
+
+
+# acf a pacf
+augment(model_auta_bez_f) %>%
+  ACF(.resid, lag_max = 100) %>%
+  autoplot() +
+  labs(title = "ACF reziduí modelu aut")
+
+augment(model_auta_bez_f) %>%
+  PACF(.resid, lag_max = 100) %>%
+  autoplot() +
+  labs(title = "PACF reziduí modelu aut")
+
+res <- residuals(model_auta_bez_f)$arima_final
+res_f <- augment(model_auta_bez_f)$.resid
+
+var(res8, na.rm = TRUE)
+var(diff(res8, 1), na.rm = TRUE)          # klasická diference
+var(diff(res8, 24), na.rm = TRUE)         # denní sezónní diference
+var(diff(diff(res8, 1), 1), na.rm = TRUE) # 2. klasická diference
+var(diff(res8, 7*24), na.rm = TRUE)       # týdenní sezónní diference
+
+augment(model_auta_bez_f) %>%
+  features(.resid, ljung_box, lag = 24)
+
+augment(model_auta_bez_f) %>%
+  features(.resid, ljung_box, lag = 168)
+
+glance(model_auta_bez_f)
+
+augment(model_auta_bez_f) %>%
+  ggplot(aes(x = cas)) +
+  geom_line(aes(y = valid_speed_count), color = "gray") +
+  geom_line(aes(y = .fitted), color = "blue") +
+  labs(title = "Model vs. skutečnost (auta)")
+
+
+# neni dobry :( denni sezonnost neni vubec chycena
+
+
