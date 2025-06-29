@@ -39,8 +39,16 @@ ggarrange(g1, g2, g3, g4, ncol = 2, nrow = 2)
 
 
 
-
-
+ggplot(data_hodinova, aes(x = cas, y = no2)) +
+  geom_line() +
+  labs(
+    title = "Hodinová koncentrace NO2",
+    x = "Datum",
+    y = "NO2 [ug/m3]"
+  ) +
+  theme_minimal() +
+  scale_x_datetime(date_labels = "%m/%Y", date_breaks = "1 month")
+  
 
 
 

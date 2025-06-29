@@ -15,9 +15,6 @@ data_ts_denni <- data_denni %>%
   as_tsibble(index = datum) %>%
   fill_gaps()
 
-data_ts_denni <- data_ts_denni %>%
-  mutate(prumerna_teplota_dne = tsibble::fill_gaps(prumerna_teplota_dne)) %>%
-  mutate(prumerna_teplota_dne = na.interpolation(prumerna_teplota_dne))
 
 
 model_temp_denni <- data_ts_denni %>%

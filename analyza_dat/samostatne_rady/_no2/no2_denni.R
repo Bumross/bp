@@ -12,6 +12,16 @@ model_leto_no2 <- lm(data_no2 ~ den + I(den^2), data = data_leto_no2)
 summary(model_leto_no2)
 
 
+ggplot(data_denni, aes(x = datum, y = data_no2)) +
+  geom_line() +
+  labs(
+    title = "Denní průměrná koncentrace NO2",
+    x = "Datum",
+    y = "NO2 [ug/m3]"
+  ) +
+  scale_x_date(date_labels = "%m/%Y", date_breaks = "1 month") +
+  
+  theme_minimal()
 
 
 ####
@@ -331,3 +341,165 @@ ggplot(data_all, aes(x = datum)) +
     y = "NO2 [µg/m³]"
   ) +
   theme_minimal()
+
+
+
+#####################################
+data_denni$sin365 <- sin(2*pi*data_denni$den/365)
+data_denni$cos365 <- cos(2*pi*data_denni$den/365)
+
+model1 <- lm(data_no2 ~ sin365 + cos365 + factor(den_v_tydnu) + factor(topeni), data=data_denni)
+
+model2 <- lm(data_no2 ~ sin365 + cos365 + factor(den_v_tydnu) * factor(topeni), data=data_denni)
+
+
+model3 <- lm(data_no2 ~ cos365 + factor(topna_sezona), data = data_denni)
+
+model4 <- lm(data_no2 ~ cos365, data = data_denni)
+
+model5 <- lm(log(data_no2) ~ cos365, data = data_denni)
+summary(model5)
+
+###
+par(mfrow = c(2,2))
+plot(model5)
+
+# 2. autokorelace reziduí
+acf(resid(model5), main = "ACF reziduí model5")
+
+# 3. histogram reziduí
+hist(resid(model5), breaks=30, col="lightblue", main="Histogram reziduí", xlab="Rezidua")
+
+# 4. shapiro test normality reziduí
+shapiro.test(resid(model5))
+
+checkresiduals(model5)
+
+library(nlme)
+model6 <- gls(log(data_no2) ~ cos365, correlation = corAR1(), data = data_denni)
+summary(model6)
+
+###
+par(mfrow = c(2,2))
+plot(model6)
+
+# 2. autokorelace reziduí
+acf(resid(model6), main = "ACF reziduí model5")
+
+# 3. histogram reziduí
+hist(resid(model6), breaks=30, col="lightblue", main="Histogram reziduí", xlab="Rezidua")
+
+# 4. shapiro test normality reziduí
+shapiro.test(resid(model6))
+
+checkresiduals(model6)
+#############################################################################
+
+# poslední datum v datech
+last_date <- max(data_denni$datum)
+
+# vytvoření budoucích 100 dnů
+future_dates <- seq(last_date + 1, by = "day", length.out = 100)
+
+# přepočet cos365 pro budoucí dny
+future_den <- as.numeric(format(future_dates, "%j"))  # den v roce 1..365
+future_cos365 <- cos(2*pi*future_den/365)
+
+# predikce s modelem6
+# beru fixované koeficienty
+beta0 <- 2.6228793
+beta1 <- 0.1331337
+
+future_fit <- beta0 + beta1 * future_cos365
+
+# predikční intervaly
+# použijeme reziduální standardní chybu z GLS
+se <- 0.3094216
+# 95% interval
+future_lower <- future_fit - 1.96 * se
+future_upper <- future_fit + 1.96 * se
+
+# zpět transformace z log
+future_pred <- exp(future_fit)
+future_lower_exp <- exp(future_lower)
+future_upper_exp <- exp(future_upper)
+
+
+####################################################
+# fitted hodnoty na historických datech
+fitted_log <- fitted(model6)
+fitted <- exp(fitted_log)
+
+# vytvoření finálního datového rámce
+prediction_df <- data.frame(
+  datum = c(data_denni$datum, future_dates),
+  typ_datumu = c(rep("historie", nrow(data_denni)), rep("predikce", length(future_dates))),
+  skutecne_hodnoty = c(data_denni$data_no2, rep(NA, length(future_dates))),
+  fitted_hodnoty = c(fitted, rep(NA, length(future_dates))),
+  predikce = c(rep(NA, nrow(data_denni)), future_pred),
+  predikce_lower = c(rep(NA, nrow(data_denni)), future_lower_exp),
+  predikce_upper = c(rep(NA, nrow(data_denni)), future_upper_exp)
+)
+
+head(prediction_df, 10)  # kontrola
+
+
+
+#########################################################
+ggplot(prediction_df, aes(x = datum)) +
+  geom_line(aes(y = skutecne_hodnoty, color = "Skutečné hodnoty"), na.rm = TRUE) +
+  geom_line(aes(y = predikce, color = "Predikce"), linewidth=0.8, na.rm = TRUE) +
+  geom_ribbon(aes(ymin = predikce_lower, ymax = predikce_upper),
+              data = subset(prediction_df, typ_datumu == "predikce"),
+              fill = "grey70", alpha = 0.4) +
+  scale_color_manual(values = c(
+    "Skutečné hodnoty" = "black",
+    "Predikce" = "blue"
+  )) +
+  labs(
+    title = "Predikce koncentrace NO2 denní data",
+    x = "Datum",
+    y = "NO2 [ug/m3]",
+  ) +
+  scale_x_date(date_labels = "%m/%Y", date_breaks = "1 month") +
+
+  theme_minimal()
+
+
+
+fitted_log <- fitted(model6)
+fitted <- exp(fitted_log)
+
+# ---- predikce budoucích 100 dní ----
+# přepočet cos365 pro budoucí dny
+future_den <- as.numeric(format(future_dates, "%j"))
+future_cos365 <- cos(2*pi*future_den/365)
+
+# parametry modelu
+beta0 <- 2.6228793
+beta1 <- 0.1331337
+
+future_fit <- beta0 + beta1 * future_cos365
+
+# predikční intervaly
+se <- 0.3094216  # reziduální směrodatná odchylka
+future_lower <- future_fit - 1.96 * se
+future_upper <- future_fit + 1.96 * se
+
+# zpět z log
+future_pred <- exp(future_fit)
+future_lower_exp <- exp(future_lower)
+future_upper_exp <- exp(future_upper)
+
+# ---- kompletní data frame ----
+prediction_df_denni <- data.frame(
+  datum = c(data_denni$datum, future_dates),
+  typ_datumu = c(rep("historie", nrow(data_denni)), rep("predikce", length(future_dates))),
+  skutecne_hodnoty = c(data_denni$data_no2, rep(NA, length(future_dates))),
+  fitted_hodnoty = c(fitted, rep(NA, length(future_dates))),
+  predikce = c(rep(NA, nrow(data_denni)), future_pred),
+  predikce_lower = c(rep(NA, nrow(data_denni)), future_lower_exp),
+  predikce_upper = c(rep(NA, nrow(data_denni)), future_upper_exp)
+)
+
+head(prediction_df_denni, 10)

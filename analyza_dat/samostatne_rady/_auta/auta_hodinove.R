@@ -514,7 +514,7 @@ model_hodinovy <- data_ts_hodinove %>%
     ARIMA(
       valid_speed_count ~ 
         velke_svatky + letni_prazdniny +
-        fourier(24, K = 3) + fourier(168, K = 2)
+        fourier(24, K = 3) + fourier(168, K = 2) + pdq(2,0,3) + PDQ(1,0,0,24)
     )
   )
 # 203 100
@@ -761,10 +761,10 @@ report(model_auta_bez_f)
 
 
 # acf a pacf
-augment(model_auta_bez_f) %>%
+augment(model_hodinovy) %>%
   ACF(.resid, lag_max = 100) %>%
   autoplot() +
-  labs(title = "ACF reziduí modelu aut")
+  labs(title = "ACF reziduí hodinového modelu aut") + theme_minimal()
 
 augment(model_auta_bez_f) %>%
   PACF(.resid, lag_max = 100) %>%
@@ -780,10 +780,10 @@ var(diff(res8, 24), na.rm = TRUE)         # denní sezónní diference
 var(diff(diff(res8, 1), 1), na.rm = TRUE) # 2. klasická diference
 var(diff(res8, 7*24), na.rm = TRUE)       # týdenní sezónní diference
 
-augment(model_auta_bez_f) %>%
+augment(model_hodinovy) %>%
   features(.resid, ljung_box, lag = 24)
 
-augment(model_auta_bez_f) %>%
+augment(model_hodinovy) %>%
   features(.resid, ljung_box, lag = 168)
 
 glance(model_auta_bez_f)
@@ -798,3 +798,62 @@ augment(model_auta_bez_f) %>%
 # neni dobry :( denni sezonnost neni vubec chycena
 
 
+###########
+augment(model_hodinovy) %>% 
+  features(.innov, features = list(
+    LjungBox = ~ljung_box(.),
+    ShapiroW = ~shapiro_test(.),
+    Mean = ~mean(.),
+    Var = ~var(.)
+  ))
+
+residua <- augment(model_hodinovy)$.innov
+shapiro.test(residua)
+
+rezidua <- augment(model_hodinovy) %>% pull(.resid)
+
+library(nortest)
+ad.test(residua)
+
+qqnorm(residua, main = "QQ–plot reziduí hodinového modelu")
+qqline(residua, col = "red", lwd = 2)
+
+augment(model_hodinovy) %>% 
+  autoplot(.innov) + ggtitle("Rezidua hodinového modelu") + theme_minimal()
+
+
+p1 <- ggplot(data.frame(residua), aes(x = residua)) +
+  geom_histogram(aes(y = ..density..), bins = 40, fill = "gray", color = "black") +
+  geom_density(color = "steelblue", size = 1) +
+  labs(title = "Histogram reziduí", x = "Reziduum", y = "Hustota") +
+  theme_minimal()
+
+# 2. QQ-plot
+p2 <- ggplot(data.frame(residua), aes(sample = residua)) +
+  stat_qq() +
+  stat_qq_line(color = "steelblue") +
+  labs(title = "QQ–plot reziduí") +
+  theme_minimal()
+
+# 3. ACF plot – převedeme na dataframe
+acf_data <- forecast::Acf(residua, plot = FALSE)
+acf_df <- data.frame(lag = acf_data$lag, acf = acf_data$acf)
+
+acf_df_filtered <- acf_df %>% filter(lag != 0)
+
+
+p3 <- ggplot(acf_df_filtered, aes(x = lag, y = acf)) +
+  geom_bar(stat = "identity", fill = "black") +
+  geom_hline(
+    yintercept = c(0, qnorm(0.975)/sqrt(length(residua)), -qnorm(0.975)/sqrt(length(residua))),
+    linetype = "dashed", color = "steelblue"
+  ) +
+  labs(
+    title = "Autokorelační funkce (ACF)",
+    x = "Zpoždění",
+    y = "ACF"
+  ) +
+  theme_minimal()
+
+# Spojení do jednoho výstupu
+(p1 | p2) / p3

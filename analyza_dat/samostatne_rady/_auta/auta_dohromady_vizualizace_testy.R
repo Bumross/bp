@@ -41,6 +41,8 @@ ggplot(denni_data_trimmed, aes(x = datum, y = denni_prumer)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
+
+
 # stl
 data_hod <- data %>%
   arrange(cas) %>%
@@ -50,6 +52,8 @@ ts_hod <- ts(data_hod$valid_speed_count, frequency = 168)
 
 dekompozice_hod <- stl(ts_hod, s.window = "periodic")
 plot(dekompozice_hod, main = "STL dekompozice hodinového počtu projetých vozidel s periodou 168 hodin")
+
+
 
 
 
@@ -65,12 +69,20 @@ ggPacf(ts_hod, lag.max = 168) +
   theme_minimal()
 
 
+
+
+
+
+
 # tydenni vzorce
 data_ts <- ts(data$valid_speed_count, frequency = 24 * 7)
 
 ggseasonplot(data_ts, season.labels = TRUE, col = "black") +
   labs(title = "Sezónní vzorce v rámci týdne", x = "Den v týdnu", y = "Počet aut") +
   theme_minimal()
+
+
+
 
 # auta za hodinu
 data %>%
@@ -96,6 +108,10 @@ data %>%
   theme_minimal()
 
 
+
+
+
+
 # podle mesice
 data %>%
   mutate(mesic = month(cas)) %>%
@@ -107,6 +123,9 @@ data %>%
     y = "Počet aut"
   ) +
   theme_minimal()
+
+
+
 
 # heatmapa
 data %>%
@@ -142,16 +161,15 @@ df_fitted <- model_hodinovy %>%
   augment() %>%
   select(cas, .fitted)
 
-# 2. Původní data s reálnými hodnotami a příznaky
+
 df_real <- data_ts_hodinove %>%
   select(cas, valid_speed_count, letni_prazdniny, velke_svatky)
 
-# 3. Testovací predikce (30 %)
+
 df_test <- forecast_test %>%
   as_tibble() %>%
   select(cas, pred_30prct = .mean)
 
-# 4. Forecast na 14 dní dopředu
 df_forecast <- forecast_hodinovy_fixed %>%
   as_tibble() %>%
   select(cas, pred_14dni = pred, lower_14dni = lower, upper_14dni = upper)
@@ -168,7 +186,6 @@ future_data <- tibble(
 future_data_extended <- future_data %>%
   mutate(valid_speed_count = NA_real_)
 
-# Spojíme s původními daty
 df_real_extended <- data_ts_hodinove %>%
   select(cas, valid_speed_count, letni_prazdniny, velke_svatky) %>%
   bind_rows(future_data_extended)
@@ -186,7 +203,6 @@ data_merged_clean <- data_merged %>%
   ))
 
 
-# 6. Uložení výsledku
 write.csv(data_merged_clean, "auta_hodinova.csv", row.names = FALSE)
 
 
@@ -352,3 +368,10 @@ ggplot(results_test, aes(x = datum)) +
   scale_x_date(date_labels = "%d.%m.%y", date_breaks = "5 days") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+
+
+#################################################################################
+# Vizualizace
