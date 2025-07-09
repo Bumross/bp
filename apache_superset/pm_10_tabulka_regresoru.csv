@@ -1,0 +1,7 @@
+Proměnná,Koeficient topné sezóny,Koeficient netopné sezóny,Změna topné,Změna netopné
+"počet projetých vozidel",-5.8e-07,2.4e-05,"zanedbatelné","zanedbatelné", 0, 0
+"teplota vzduchu",0,00057,0,071,"cca 0 % při +1 °C","+7,4 % při +1 °C"
+"relativní vlhkost",0,019,0,0073,"+1,9 % při +1 % vlhkosti","+0,7 % při +1 % vlhkosti"
+"atmosférický tlak",0,0001,0,000135,"prakticky zanedbatelné","prakticky zanedbatelné"
+"objem srážek",-1,098,0,025,"-67 % při +1 mm","nevýznamné"
+"rychlost větru",-0,245,-0,085,"-22 % při +1 m/s","-8,1 % při +1 m/s"
