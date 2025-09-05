@@ -19,7 +19,22 @@ data %>%
   scale_x_datetime(date_labels = "%d/%m/%Y", date_breaks = "1 month") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-   
+
+data %>%
+  ggplot(aes(x = cas, y = valid_speed_count)) +
+  geom_line(color = "black", alpha = 0.6) +
+  labs(
+    title = "Vývoj počtu projetých vozidel v čase",
+    x = "Datum a čas",
+    y = "Počet aut za hodinu"
+  ) +
+  theme_minimal() +
+  scale_x_datetime(
+    date_labels = "%d/%m/%Y",
+    date_breaks = "1 month",
+    limits = c(as.POSIXct("2024-10-01"), NA)
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 # denni prumer
 denni_data <- data %>%
@@ -48,14 +63,16 @@ data_hod <- data %>%
   arrange(cas) %>%
   drop_na(valid_speed_count)
 
-ts_hod <- ts(data_hod$valid_speed_count, frequency = 168)
+ts_hod <- ts(data_denni$valid_speed_count, frequency = 7)
 
 dekompozice_hod <- stl(ts_hod, s.window = "periodic")
 plot(dekompozice_hod, main = "STL dekompozice hodinového počtu projetých vozidel s periodou 168 hodin")
 
 
+ts_hod_multi <- msts(data_hod$valid_speed_count, seasonal.periods = c(24, 168))
 
-
+dekompozice_multi <- mstl(ts_hod_multi)
+autoplot(dekompozice_multi) + theme_minimal()
 
 # autokorelacni a sezooni
 ts_hod <- ts(data_hod$valid_speed_count, frequency = 24)  # nebo 168 pro týdenní

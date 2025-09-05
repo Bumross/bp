@@ -189,14 +189,9 @@ head(df_pm)
 library(ggplot2)
 library(lubridate)
 
-# předpokládám, že datový rámec se jmenuje např. df
-# nahraď podle potřeby
-# df <- tvoje_data
 
-# přidáme sloupec s hodinou
 data$hodina <- hour(data$cas)
 
-# boxplot podle hodin
 ggplot(data, aes(x = factor(hodina), y = data_pm100)) +
   geom_boxplot(fill = "lightblue") +
   labs(

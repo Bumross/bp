@@ -106,11 +106,9 @@ future_data <- tibble(
 period_day <- 24
 period_year <- 24 * 365
 
-# Počet harmonických členů
 K_day <- 3
 K_year <- 1
 
-# Funkce pro vytvoření fourierových členů
 make_fourier_terms <- function(t, K, period, prefix) {
   terms <- purrr::map_dfc(1:K, function(k) {
     tibble(
@@ -121,7 +119,6 @@ make_fourier_terms <- function(t, K, period, prefix) {
   return(terms)
 }
 
-# Aplikuj na future_data
 future_data <- future_data %>%
   bind_cols(
     make_fourier_terms(future_data$t, K_day, period_day, "fday"),
@@ -265,7 +262,7 @@ train_n <- floor(0.7 * n)
 data_train <- data_ts_temp_clean[1:train_n, ]
 data_test  <- data_ts_temp_clean[(train_n + 1):n, ]
 
-# 3. Trénovací model – s lagy
+# trenovaci model
 model_train <- data_train %>%
   model(temp_model = ARIMA(
     data_temp1 ~ 

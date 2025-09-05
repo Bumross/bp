@@ -1,6 +1,5 @@
 plot(data_denni$datum, data_denni$data_pm100, type = "l", main = "Denní průměr PM100")
 
-# ulož si do objektu
 pm_day <- daily$pm
 dates_day <- daily$date
 
@@ -18,10 +17,8 @@ ggplot(data_denni, aes(x = datum, y = data_pm100)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-# 2️⃣ ACF pro denní data
 acf(data_denni$data_pm100, na.action = na.pass, main = "ACF denních PM10")
 
-# 3️⃣ sezónní boxplot podle měsíce
 data_denni$mesic <- factor(format(data_denni$datum, "%m"))
 
 ggplot(data_denni, aes(x = mesic, y = data_pm100)) +
@@ -56,13 +53,11 @@ ggplot(data_denni, aes(x = factor(topna_sezona), y = data_pm100)) +
 
 data_denni$den <- as.numeric(data_denni$datum - as.Date("2024-01-01")) + 1
 
-# označení topné sezóny jemněji
 data_denni$topna_sezona2 <- case_when(
   data_denni$mesic %in% 4:9 ~ "leto",
   TRUE ~ "zima"
 )
 
-# letní data
 leto <- data_denni %>%
   filter(topna_sezona2 == "leto")
 
@@ -74,7 +69,6 @@ summary(model_leto)
 mean_zima <- mean(log(data_denni$data_pm100[data_denni$topna_sezona2 == "zima"]), na.rm = TRUE)
 
 
-# složení fitted hodnot
 fit_pm <- rep(NA, nrow(data_denni))
 
 # predikce léto
@@ -109,18 +103,14 @@ model_leto <- lm(log(data_pm100) ~ den + I(den^2), data = leto)
 # konstanta v zimě
 mean_zima <- mean(log(data_denni$data_pm100[data_denni$sezona == "zima"]), na.rm = TRUE)
 
-# připravit vektor predikcí
 fit_pm <- rep(NA, nrow(data_denni))
 
-# predikce léto
 fit_pm[data_denni$sezona == "leto"] <- predict(model_leto, newdata = leto)
-
-# predikce zima
 fit_pm[data_denni$sezona == "zima"] <- mean_zima
 
 # predikce přechodových měsíců (vážený průměr)
 prechod <- filter(data_denni, sezona == "prechod")
-weight_leto <- ifelse(prechod$mesic == 3, 0.2, 0.8)   # březen 20% léto, říjen 80% léto
+weight_leto <- ifelse(prechod$mesic == 3, 0.4, 0.8)   # březen 20% léto, říjen 80% léto
 fit_leto_p <- predict(model_leto, newdata = prechod)
 fit_pm[data_denni$sezona == "prechod"] <- weight_leto * fit_leto_p + (1 - weight_leto) * mean_zima
 
@@ -137,14 +127,11 @@ lines(exp(fit_pm), col = 2)
 ln.res <- log(data_denni$data_pm100) - fit_pm
 plot(ln.res, type = "l", main = "Rezidua po odečtení trendu", ylab = "residua log(PM10)")
 
-# histogram
 hist(ln.res, breaks = 30, main = "Histogram reziduí")
 
-# QQ plot
 qqnorm(ln.res)
 qqline(ln.res)
 
-# ACF reziduí
 acf(ln.res, na.action = na.pass, main = "ACF reziduí")
 
 
@@ -166,18 +153,15 @@ lines(fitted(arima.model), col=2)
 
 #########
 # predikce:
-# poslední známé datum
 last_date <- max(data_denni$datum)
 
 # 100 dní dopředu
 future_dates <- seq.Date(from = last_date + 1, by = "day", length.out = 100)
 
-# připravíme tabulku
 future <- data.frame(
   datum = future_dates
 )
 
-# doplníme potřebné proměnné
 future$mesic <- as.numeric(format(future$datum, "%m"))
 future$den <- as.numeric(future$datum - as.Date("2024-01-01")) + 1
 
@@ -192,7 +176,8 @@ future$sezona <- case_when(
 )
 
 # váha pro přechod
-future$weight_leto <- ifelse(future$mesic == 3, 0.2,
+# nakonec nepouziju
+future$weight_leto <- ifelse(future$mesic == 3, 1,
                              ifelse(future$mesic == 10, 0.8, NA))
 
 
@@ -265,7 +250,8 @@ ggplot(pred_all, aes(x = datum, y = pm_pred)) +
   geom_line(color = "black") +
   geom_ribbon(aes(ymin = pm_lower, ymax = pm_upper), fill = "lightblue", alpha = 0.4) +
   labs(title = "Predikce PM10 s 95% intervalem", x = "Datum", y = "PM10") +
-  theme_minimal()
+  theme_minimal() +
+  scale_x_date(date_labels = "%d/%m", date_breaks = "1 month")
 
 
 
@@ -327,10 +313,8 @@ future_df <- data.frame(
   predikce_upper = future$pm_upper
 )
 
-# sloučit
 final_df <- rbind(historical_df, future_df)
 
-# zkontroluj
 head(final_df)
 tail(final_df)
 
@@ -374,12 +358,10 @@ arima_fit <- fitted(arima.model)
 
 model_log_fit <- fit.pm + arima_fit
 
-# zpět do PM
 model_pm_fit <- exp(model_log_fit)
 
 
 ##################
-# vygenerovat datumy
 last_date <- max(data_denni$datum)
 future_dates <- seq.Date(last_date + 1, by="day", length.out=100)
 
@@ -388,7 +370,6 @@ future <- data.frame(
   mesic = as.numeric(format(future_dates, "%m"))
 )
 
-# den v roce omezený na 1–365
 future$den <- as.numeric(future$datum - as.Date("2024-01-01")) + 1
 future$den <- ifelse(future$den > 365, future$den - 365, future$den)
 

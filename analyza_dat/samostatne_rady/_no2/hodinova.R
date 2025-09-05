@@ -234,7 +234,9 @@ new_cos24 <- cos(2 * pi * new_index / 24)
 # sinusová složka denní
 new_sin24 <- sin(2 * pi * new_index / 24)
 
-# sestavíme newdata s přesnými názvy podle modelu
+
+
+# predikcni data
 newdata <- data.frame(
   cos8760 = new_cos8760,
   cos24 = new_cos24,
@@ -316,12 +318,9 @@ Box.test(residuals_combined, lag = 24, type = "Ljung-Box")
 
 
 #####################################################################
-# správně zarovnat fitted
 n_sarima <- length(fitted_combined_exp)
 
-# vytvořit vektor fitted s délkou celé řady
 fitted_hodnoty_full <- rep(NA, length(data$cas))
-# dosadit fitted hodnoty na posledních n_sarima pozicích
 fitted_hodnoty_full[(length(data$cas) - n_sarima + 1):length(data$cas)] <- fitted_combined_exp
 
 # sloučení

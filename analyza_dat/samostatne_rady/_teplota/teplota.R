@@ -212,14 +212,12 @@ augment(model_lm5) %>%
 
 augment(model_lm5) %>% features(.resid, ljung_box)
 
-# MNE SE TO LIBIIII <3 - to uz nekam smeruje - obklopeni lagama haha
 
 
 
 ################################################################################
 ################################################################################
 ################################################################################
-# Fourierovy cleny v arima modelu
 data_ts_temp <- data_ts_temp %>%
   mutate(
     den_v_roce = yday(cas),
@@ -512,7 +510,6 @@ future_data <- tibble(cas = seq(max(data_ts_temp$cas) + hours(1), by = "1 hour",
     lag_24 = rep(tail(data_ts_temp$data_temp1, 24)[1], delka_predpovedi)
   )
 
-# 4. Dummy pozorování pro chybějící úrovně faktoru 'month'
 dummy_months <- tibble(
   cas = as.POSIXct(sprintf("1999-01-%02d", 1:12), tz = "UTC"),
   den_v_roce = 1,
@@ -522,20 +519,16 @@ dummy_months <- tibble(
   lag_24 = 0
 )
 
-# Spojení a konverze na tsibble
 future_data_full <- bind_rows(future_data, dummy_months) %>%
   arrange(cas) %>%
   as_tsibble(index = cas) %>%
   fill_gaps()
 
-# 5. Forecast
 forecast_arima <- forecast(model_arima_mesic, new_data = future_data_full)
 
-# 6. Filtrování jen reálné predikce (vynechání dummy řádků)
 forecast_final <- forecast_arima %>%
   filter(cas >= min(future_data$cas))
 
-# 7. Vykreslení výsledku
 autoplot(forecast_final, data = data_ts_temp) +
   labs(
     title = "Predikce teploty pomocí ARIMA modelu s faktorem měsíc",

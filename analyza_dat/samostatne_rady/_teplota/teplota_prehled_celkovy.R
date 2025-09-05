@@ -31,6 +31,3 @@ ggplot(data, aes(x = datum, y = prumerna_teplota_dne)) +
 
 
 
-####################
-#predikce:
-

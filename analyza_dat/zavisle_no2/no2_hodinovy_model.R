@@ -43,6 +43,130 @@ model_tslm <- data_ts %>%
                   data_temp1 + valid_speed_count)
   )
 
+report(model_tslm)
+resid <- residuals(model_tslm)
+
+resid_vec <- resid %>% as_tibble() %>% pull(.resid)
+checkresiduals(ts(resid_vec, frequency = 24))   # denní sezónnost
+
+ts_resid <- ts(resid_vec, frequency = 24)
+arima <- auto.arima(ts_resid, approximation = TRUE, stepwise = TRUE)
+summary(arima)
+
+
+
+
+auta <- auta_hodinova
+teplota <- teplota_hodinova
+
+start <- as.POSIXct("2025-01-16 01:00:00", tz="CET")
+end   <- as.POSIXct("2025-01-29 23:00:00", tz="CET")
+
+auta$cas <- ifelse(
+  nchar(auta$cas) == 10,                  # yyyy-mm-dd
+  paste0(auta$cas, " 00:00:00"),
+  auta$cas
+)
+auta$cas <- as.POSIXct(auta$cas, tz="CET")
+
+teplota$cas <- ifelse(
+  nchar(teplota$cas) == 10,
+  paste0(teplota$cas, " 00:00:00"),
+  teplota$cas
+)
+teplota$cas <- as.POSIXct(teplota$cas, tz="CET")
+
+auta_pred <- subset(auta, cas >= start & cas <= end)
+teplota_pred <- subset(teplota, cas >= start & cas <= end)
+
+
+future_data <- auta_pred %>%
+  select(cas, valid_speed_count = pred_14dni) %>%
+  inner_join(
+    teplota_pred %>% select(cas, data_temp1 = pred_30),
+    by = "cas"
+  ) %>%
+  arrange(cas)
+
+future_data <- future_data %>%
+  mutate(
+    hodina = hour(cas),
+    den_v_tydnu = factor(wday(cas, label = TRUE, week_start = 1)),
+    den_v_roce = yday(cas),
+    sin_day = sin(2 * pi * hodina / 24),
+    cos_day = cos(2 * pi * hodina / 24),
+    sin_year = sin(2 * pi * den_v_roce / 365),
+    cos_year = cos(2 * pi * den_v_roce / 365)
+  ) %>%
+  as_tsibble(index = cas)
+
+# PŘEDPOVĚĎ
+fc <- forecast(model_tslm, new_data = future_data)
+
+# pro přepočet zpět z log(NO₂) na NO₂
+fc_df <- fc %>%
+  hilo(level = 95) %>%
+  as_tibble() %>%
+  mutate(
+    lower = exp(`95%`$lower),
+    upper = exp(`95%`$upper),
+    mean = exp(.mean)
+  )
+
+
+start_pred <- as.POSIXct("2025-01-16 01:00:00", tz="CET")
+
+historical <- data_ts %>%
+  filter(cas >= start_pred - lubridate::days(14),
+         cas < start_pred) %>%
+  as_tibble() %>%
+  mutate(
+    type = "Skutečnost",
+    value = exp(log_no2)
+  ) %>%
+  select(cas, value, type)
+
+fc_df <- fc %>%
+  hilo(level = 95) %>%
+  as_tibble() %>%
+  mutate(
+    lower = exp(`95%`$lower),
+    upper = exp(`95%`$upper),
+    value = exp(.mean),
+    type = "Predikce"
+  ) %>%
+  select(cas, value, lower, upper, type)
+
+combined <- bind_rows(
+  historical %>% mutate(lower = NA, upper = NA),
+  fc_df
+)
+
+# GRAF
+ggplot(combined, aes(x = cas)) +
+  geom_ribbon(
+    data = combined %>% filter(type == "Predikce"),
+    aes(ymin = lower, ymax = upper),
+    fill = "lightblue", alpha = 0.5
+  ) +
+  geom_line(aes(y = value, color = type)) +
+  scale_color_manual(values = c("Skutečnost" = "black", "Predikce" = "blue")) +
+  labs(
+    x = "Čas",
+    y = "NO2",
+    color = ""
+  ) +
+  theme_minimal() +
+  scale_x_datetime(date_labels = "%d/%m/%Y")
+
+
+
+
+
+
+
+
+
 # Fitted values TSLM
 fitted_tslm <- fitted(model_tslm) %>%
   as_tibble() %>%
@@ -69,6 +193,8 @@ model_gam <- gam(log_no2 ~
                    s(valid_speed_count),
                  data = data_df,
                  method = "REML")
+
+summary(model_gam)
 
 data_df$fit_no2_gam <- exp(fitted(model_gam))
 
@@ -252,6 +378,9 @@ model_tslm <- data_ts %>%
     tslm = TSLM(log_no2 ~ trend() + season("day") +
                   data_temp1_lag1 + valid_speed_count_lag2)
   )
+
+#lagy aut nejsou dobre
+report(model_tslm)
 
 fitted_tslm <- fitted(model_tslm) %>%
   as_tibble() %>%

@@ -323,7 +323,7 @@ fitted <- fitted_data %>%
 data_clean <- data_denni %>%
   select(datum, prumerna_teplota_dne)
 
-# 2. Spojíme všechno dohromady
+# spojíme všechno dohromady
 vse_spojeno <- data_clean %>%
   full_join(fitted, by = "datum") %>%
   full_join(pred_test, by = "datum")

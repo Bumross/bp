@@ -87,7 +87,7 @@ data_denni$fitted <- fitted(model_gls)
 future_data <- data_denni %>%
   slice_tail(n = 30)  # nebo připrav data s novými dny
 
-# Pozor: gls neumí predikci jako `forecast()`, ale můžeš použít `predict()`:
+# pozor: gls neumí predikci jako `forecast()`, ale použít `predict()`:
 pred <- predict(model_gls, newdata = future_data)
 
 ggplot(data_denni, aes(x = datum)) +
@@ -101,7 +101,7 @@ ggplot(data_denni, aes(x = datum)) +
 
 
 
-# 2. Vytvoření 30denní predikce (přes predict)
+#  vytvoření 30denní predikce
 max_den <- max(data_denni$den)
 future_den <- (max_den + 1):(max_den + 100)
 future_datum <- seq(max(data_denni$datum) + 1, by = "day", length.out = 100)
@@ -117,14 +117,14 @@ split_point <- n - 30
 train_data <- data_denni[1:split_point, ]
 test_data <- data_denni[(split_point + 1):n, ]
 
-# 4. Znovuvytvoření modelu pouze na trénovacích datech
+# znovuvytvoření modelu pouze na trénovacích datech
 model_val <- gls(data_no2 ~ den + I(den^2),
                  correlation = corAR1(form = ~ den),
                  data = train_data)
 
 test_data$predicted <- predict(model_val, newdata = test_data)
 
-# 5. Vykreslení
+
 ggplot() +
   geom_line(data = data_denni, aes(x = datum, y = data_no2), color = "black", size = 1, alpha = 0.7) +
   geom_line(data = data_denni, aes(x = datum, y = fitted), color = "blue", linetype = "dashed") +
@@ -318,20 +318,17 @@ data_all <- data_all %>%
 
 data_all$pred_log[data_all$is_winter] <- pred_log_values
 
-# B) Najdi konstantu z posledního dne zimy (např. konec dubna 2024)
 last_april_value <- data_all %>%
   filter(historie, month(datum) == 4) %>%
   filter(datum == max(datum)) %>%
   pull(pred_log)
 
-# C) Dosaď do léta konstantu
 data_all <- data_all %>%
   mutate(
     pred_log = if_else(is_winter, pred_log, last_april_value),
     pred = exp(pred_log)
   )
 
-# --- 7. Vizualizace ---
 ggplot(data_all, aes(x = datum)) +
   geom_line(aes(y = data_no2), color = "black") +
   geom_line(aes(y = pred), color = "red", size = 1) +

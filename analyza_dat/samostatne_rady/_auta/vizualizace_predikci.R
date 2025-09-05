@@ -45,7 +45,7 @@ combined_data <- bind_rows(actual_data, forecast_plot)
 
 
 
-# Vykresli graf
+# graf
 ggplot(combined_data, aes(x = datum)) +
   geom_ribbon(
     data = combined_data %>% filter(typ == "Predikce"),
